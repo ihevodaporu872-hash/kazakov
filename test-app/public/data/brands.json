@@ -1,0 +1,97 @@
+{
+  "categories": {
+    "radiator_steel": {
+      "label": "Радиаторы стальные панельные",
+      "brands": [
+        {"id": "purmo", "name": "Purmo"},
+        {"id": "kermi", "name": "Kermi"},
+        {"id": "buderus", "name": "Buderus"},
+        {"id": "rifar", "name": "Rifar"}
+      ],
+      "prices": {
+        "purmo":   {"11": 5500, "22": 8500, "33": 12000},
+        "kermi":   {"11": 6200, "22": 9800, "33": 14000},
+        "buderus": {"11": 5000, "22": 7800, "33": 11000},
+        "rifar":   {"11": 4500, "22": 7000, "33": 10000}
+      }
+    },
+    "convector_infloor": {
+      "label": "Конвекторы внутрипольные",
+      "brands": [
+        {"id": "varmann", "name": "Varmann"},
+        {"id": "mohlenhoff", "name": "Mohlenhoff"},
+        {"id": "eva", "name": "EVA"}
+      ],
+      "prices": {
+        "varmann":    {"natural": 25000, "fan": 45000},
+        "mohlenhoff": {"natural": 32000, "fan": 55000},
+        "eva":        {"natural": 20000, "fan": 38000}
+      }
+    },
+    "valve_thermo": {
+      "label": "Термостатические клапаны",
+      "brands": [
+        {"id": "danfoss", "name": "Danfoss"},
+        {"id": "oventrop", "name": "Oventrop"},
+        {"id": "giacomini", "name": "Giacomini"},
+        {"id": "imi", "name": "IMI Heimeier"}
+      ],
+      "prices": {
+        "danfoss":   {"valve": 1200, "head": 900},
+        "oventrop":  {"valve": 1350, "head": 1100},
+        "giacomini": {"valve": 950, "head": 750},
+        "imi":       {"valve": 1500, "head": 1200}
+      }
+    },
+    "pipe_pex": {
+      "label": "Трубы PEX (сшитый полиэтилен)",
+      "brands": [
+        {"id": "pradex", "name": "Pradex"},
+        {"id": "sanext", "name": "Sanext"},
+        {"id": "everest", "name": "Эверест"},
+        {"id": "eae", "name": "EAE"}
+      ],
+      "prices": {
+        "pradex":  {"16": 180, "20": 250, "25": 350, "32": 480},
+        "sanext":  {"16": 210, "20": 280, "25": 400, "32": 550},
+        "everest": {"16": 150, "20": 200, "25": 300, "32": 420},
+        "eae":     {"16": 220, "20": 300, "25": 420, "32": 580}
+      }
+    },
+    "pipe_ppr": {
+      "label": "Трубы PPR (полипропилен)",
+      "brands": [
+        {"id": "sanext", "name": "Sanext"},
+        {"id": "pradex", "name": "Pradex"},
+        {"id": "smart", "name": "Smart"}
+      ],
+      "prices": {
+        "sanext": {"20": 320, "25": 420, "32": 560, "40": 750, "63": 1100},
+        "pradex": {"20": 280, "25": 380, "32": 500, "40": 680, "63": 1000},
+        "smart":  {"20": 300, "25": 375, "32": 488, "40": 638, "63": 975}
+      }
+    },
+    "pipe_steel": {
+      "label": "Трубы стальные ВГП",
+      "brands": [
+        {"id": "market", "name": "Рыночная цена"}
+      ],
+      "prices": {
+        "market": {"15": 800, "20": 950, "25": 1100, "32": 1350, "40": 1600, "50": 2000, "65": 2500, "80": 3000, "100": 3800}
+      }
+    },
+    "insulation": {
+      "label": "Теплоизоляция",
+      "brands": [
+        {"id": "energoflex", "name": "Energoflex"},
+        {"id": "armaflex", "name": "Armaflex"},
+        {"id": "thermaflex", "name": "Thermaflex"}
+      ],
+      "prices": {
+        "energoflex": {"vpe_9": 120, "vpe_13": 160, "rubber_9": 250},
+        "armaflex":   {"vpe_9": 180, "vpe_13": 220, "rubber_9": 350},
+        "thermaflex": {"vpe_9": 140, "vpe_13": 180, "rubber_9": 280}
+      }
+    }
+  }
+}

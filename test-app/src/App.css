@@ -1,0 +1,96 @@
+:root {
+  --bg: #f5f6fa;
+  --card: #fff;
+  --accent: #2563eb;
+  --accent-light: #dbeafe;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text2: #64748b;
+  --green: #16a34a;
+  --green-bg: #dcfce7;
+  --orange: #ea580c;
+  --orange-bg: #fff7ed;
+  --red: #dc2626;
+  --red-bg: #fee2e2;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+h1 { font-size: 1.6rem; margin-bottom: 4px; }
+.subtitle { color: var(--text2); margin-bottom: 24px; font-size: 0.9rem; }
+
+/* Steps */
+.step { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+.step.disabled { opacity: 0.4; pointer-events: none; }
+.step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+.step-num.done { background: var(--green); }
+.step-title { font-size: 1.1rem; font-weight: 600; }
+
+/* Forms */
+.form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 0.82rem; color: var(--text2); font-weight: 500; }
+.form-group input, .form-group select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; }
+
+/* Buttons */
+.btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: var(--border); color: var(--text); }
+.btn-secondary:hover { background: #cbd5e1; }
+
+/* Radio Cards */
+.radio-cards { display: flex; gap: 12px; flex-wrap: wrap; }
+.radio-card { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; min-width: 180px; flex: 1; transition: all 0.15s; }
+.radio-card:hover { border-color: var(--accent); }
+.radio-card.active { border-color: var(--accent); background: var(--accent-light); }
+.radio-card input[type=radio] { display: none; }
+.rc-title { font-weight: 600; font-size: 0.95rem; }
+.rc-desc { font-size: 0.8rem; color: var(--text2); }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { font-weight: 600; font-size: 0.82rem; color: var(--text2); background: #f8fafc; }
+
+/* Tags */
+.tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+.tag-ok { background: var(--green-bg); color: var(--green); }
+.tag-over { background: var(--red-bg); color: var(--red); }
+.tag-fit { background: #fef9c3; color: #a16207; }
+
+/* Info & Result boxes */
+.info-box { background: var(--accent-light); border-radius: 8px; padding: 12px 16px; font-size: 0.88rem; margin-bottom: 12px; }
+.result-box { background: var(--green-bg); border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; }
+.warn-box { background: var(--red-bg); border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; }
+
+/* Summary grid */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.summary-item { background: #f8fafc; border-radius: 8px; padding: 12px 16px; }
+.si-label { font-size: 0.78rem; color: var(--text2); margin-bottom: 2px; }
+.si-value { font-size: 1rem; font-weight: 600; }
+
+/* Editable Price */
+.editable-price { cursor: pointer; padding: 4px 8px; border-radius: 6px; display: inline-flex; flex-direction: column; align-items: flex-start; min-width: 80px; transition: all 0.15s; }
+.editable-price:hover { outline: 2px solid var(--accent); }
+.price-value { font-weight: 600; }
+.price-source { font-size: 0.72rem; color: var(--text2); }
+.price-input { padding: 4px 8px; border: 2px solid var(--accent); border-radius: 6px; font-size: 0.9rem; }
+
+/* Export bar */
+.export-bar { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+
+/* Formula */
+.formula { background: #f8fafc; padding: 12px; border-radius: 8px; font-family: monospace; margin-bottom: 8px; overflow-x: auto; }
+.var { color: var(--accent); font-weight: 600; }
+.res { color: var(--green); font-weight: 700; font-size: 1.1em; }
+.val { color: var(--accent); font-weight: 700; }
+
+/* Print */
+@media print {
+  .btn, .export-bar, .radio-cards { display: none !important; }
+  .step.disabled { display: none; }
+  .step { break-inside: avoid; }
+}
