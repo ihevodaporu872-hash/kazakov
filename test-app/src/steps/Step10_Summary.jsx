@@ -3,6 +3,7 @@ import StepCard from '../components/StepCard';
 import { useProject } from '../state/ProjectContext';
 import { fmt, DEVICE_TYPE_LABELS } from '../calc/heatCalc';
 import { getWorkPrice } from '../calc/contractorPricing';
+import { calculateProjectMaterials, getMaterialPrice } from '../calc/materialCalc';
 import { exportToExcel } from '../io/excelExport';
 
 export default function Step10_Summary() {
@@ -22,13 +23,22 @@ export default function Step10_Summary() {
     return { ...item, resolved };
   });
 
-  // Расчёт стоимости материалов (упрощённый — из спецификации)
+  // Расчёт материалов из параметров проекта
+  const projectMaterials = calculateProjectMaterials(state);
+
   let totalMaterials = 0;
-  const materialRows = (state.specData || []).map(spec => {
-    const unitPrice = estimateMaterialPrice(spec, state);
-    const cost = unitPrice * spec.qty;
+  const materialRows = projectMaterials.map(item => {
+    const override = state.materialPriceOverrides[item.priceKey || item.name];
+    let priceInfo;
+    if (override != null) {
+      priceInfo = { price: override, source: 'manual' };
+    } else {
+      priceInfo = getMaterialPrice(item, state.priceMatrix, state.brandsData, state.brandSelections);
+    }
+    const unitPrice = priceInfo.price;
+    const cost = unitPrice * item.qty;
     totalMaterials += cost;
-    return { ...spec, unitPrice, cost };
+    return { ...item, unitPrice, cost, priceSource: priceInfo.source };
   });
 
   const grandTotal = totalWork + totalMaterials;
@@ -39,6 +49,13 @@ export default function Step10_Summary() {
 
   return (
     <StepCard step={10} title="Итоговая смета">
+      {state.projectName && (
+        <div className="info-box" style={{ marginBottom: 16 }}>
+          <strong>{state.projectName}</strong>
+          {state.systemType && <span style={{ marginLeft: 12, color: 'var(--text2)' }}>{state.systemType}, {state.distribution}</span>}
+        </div>
+      )}
+
       <div className="summary-grid">
         <div className="summary-item">
           <div className="si-label">Подрядчик</div>
@@ -87,23 +104,35 @@ export default function Step10_Summary() {
         </table>
       </div>
 
-      <h3 style={{ marginTop: 20, fontSize: '1rem' }}>Спецификация материалов</h3>
+      <h3 style={{ marginTop: 20, fontSize: '1rem' }}>Материалы и оборудование</h3>
       <div style={{ overflowX: 'auto' }}>
         <table>
-          <thead><tr><th>№</th><th>Наименование</th><th>Ед.</th><th>Кол-во</th><th>Цена ед.</th><th>Стоимость</th></tr></thead>
+          <thead><tr><th>№</th><th>Наименование</th><th>Характеристики</th><th>Ед.</th><th>Кол-во</th><th>Цена ед.</th><th>Стоимость</th></tr></thead>
           <tbody>
             {materialRows.map(r => (
-              <tr key={r.num}>
-                <td>{r.num}</td><td>{r.name}</td><td>{r.unit}</td><td>{r.qty}</td>
-                <td>{fmt(r.unitPrice)}</td><td><strong>{fmt(r.cost)}</strong></td>
+              <tr key={r.num} style={getRowStyle(r.priceSource)}>
+                <td>{r.num}</td>
+                <td>{r.name}</td>
+                <td style={{ fontSize: '0.82rem', color: 'var(--text2)' }}>{r.chars}</td>
+                <td>{r.unit}</td>
+                <td>{r.qty}</td>
+                <td>{fmt(r.unitPrice)}</td>
+                <td><strong>{fmt(r.cost)}</strong></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr><td colSpan={5} style={{ fontWeight: 600, textAlign: 'right' }}>Итого материалы:</td>
+            <tr><td colSpan={6} style={{ fontWeight: 600, textAlign: 'right' }}>Итого материалы:</td>
               <td><strong>{fmt(totalMaterials)} руб</strong></td></tr>
           </tfoot>
         </table>
+      </div>
+
+      <div className="result-box" style={{ marginTop: 16 }}>
+        <strong>Общая стоимость: {fmt(grandTotal)} руб</strong>
+        <span style={{ marginLeft: 12, color: 'var(--text2)', fontSize: '0.85rem' }}>
+          (работы: {fmt(totalWork)} + материалы: {fmt(totalMaterials)})
+        </span>
       </div>
 
       <div className="export-bar" style={{ marginTop: 20 }}>
@@ -118,7 +147,8 @@ function getRowStyle(source) {
   const colors = {
     contractor: {}, neighbor: { backgroundColor: '#fef9c3' },
     market: { backgroundColor: '#fff7ed' }, manual: { backgroundColor: '#dcfce7' },
-    missing: { backgroundColor: '#fee2e2' }
+    missing: { backgroundColor: '#fee2e2' }, estimate: { backgroundColor: '#fff7ed' },
+    brand: { backgroundColor: '#f0f9ff' },
   };
   return colors[source] || {};
 }
@@ -130,15 +160,4 @@ function getSourceText(resolved) {
   if (resolved.source === 'manual') return 'ручная';
   if (resolved.source === 'missing') return 'нет данных';
   return '';
-}
-
-function estimateMaterialPrice(spec, state) {
-  const name = spec.name.toLowerCase();
-  if (name.includes('радиатор')) return 8500;
-  if (name.includes('конвектор')) return 30000;
-  if (name.includes('термоголовка')) return 1000;
-  if (name.includes('клапан')) return 1200;
-  if (name.includes('воздухоотвод') || name.includes('маевского')) return 200;
-  if (name.includes('кронштейн')) return 150;
-  return 500;
 }

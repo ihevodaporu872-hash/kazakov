@@ -1,6 +1,20 @@
 import React, { createContext, useContext, useReducer } from 'react';
 
 const initialState = {
+  // Проект
+  projectData: null,
+  selectedBuilding: null,
+  projectName: '',
+  systemType: '',
+  distribution: '',
+  insulationThickness_mm: 13,
+  floorHeight_mm: 3000,
+  riserPairs: 0,
+  manifoldOutputs: 0,
+  heatingZones: 0,
+  apartments: 0,
+  area_m2: 0,
+
   // Шаг 1
   windowCount: 0,
   heatLoad_W: 0,

@@ -1,0 +1,74 @@
+{
+  "name": "308. ВГК№5 (Балчуг) v.2",
+  "coolant": "80/60",
+  "system": "Двухтрубная",
+  "wallHeight_mm": 800,
+  "floorHeight_mm": 3000,
+  "distribution": "Попутного типа",
+  "insulationThickness_mm": 13,
+
+  "buildings": {
+    "K1.1": {
+      "name": "Корпус К 1.1",
+      "heatLoad_kW": 435.4,
+      "apartments": 82,
+      "floors": "2-17",
+      "riserPairs": 2,
+      "manifoldOutputs": 2,
+      "heatingZones": 1,
+      "windows": [
+        {"width_mm": 1700, "count": 16},
+        {"width_mm": 1850, "count": 238},
+        {"width_mm": 840, "count": 66}
+      ],
+      "totalWindows": 320
+    },
+    "K1.2": {
+      "name": "Корпус К 1.2",
+      "heatLoad_kW": 435.4,
+      "apartments": 77,
+      "floors": "2-15",
+      "riserPairs": 2,
+      "manifoldOutputs": 11,
+      "heatingZones": 1,
+      "windows": [
+        {"width_mm": 1700, "count": 14},
+        {"width_mm": 1850, "count": 154},
+        {"width_mm": 3040, "count": 28},
+        {"width_mm": 840, "count": 84},
+        {"width_mm": 1200, "count": 42}
+      ],
+      "totalWindows": 322
+    },
+    "K1.3": {
+      "name": "Корпус К 1.3",
+      "heatLoad_kW": 800.79,
+      "apartments": 270,
+      "floors": "2-25",
+      "riserPairs": 2,
+      "manifoldOutputs": 9,
+      "heatingZones": 2,
+      "windows": [
+        {"width_mm": 2200, "count": 929},
+        {"width_mm": 1200, "count": 63}
+      ],
+      "totalWindows": 992
+    }
+  },
+
+  "totals": {
+    "heatLoad_kW": 1671.59,
+    "apartments": 429,
+    "totalWindows": 1634,
+    "area_m2": 24315.3,
+    "areaWithSummer_m2": 24897.5,
+    "parkingSpots": 196
+  },
+
+  "apartmentBreakdown": {
+    "1room": 226,
+    "2room": 87,
+    "3room": 55,
+    "4room": 61
+  }
+}
