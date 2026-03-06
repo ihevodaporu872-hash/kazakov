@@ -3,31 +3,23 @@ import StepCard from '../components/StepCard';
 import { useProject } from '../state/ProjectContext';
 import { fmt } from '../calc/heatCalc';
 import { getWorkPrice } from '../calc/contractorPricing';
-import { calculateProjectMaterials, getMaterialPrice } from '../calc/materialCalc';
+import { calculateProjectMaterials, getMaterialPrice, calculateWorkQuantities } from '../calc/materialCalc';
 import { exportToExcel } from '../io/excelExport';
 
-// Связь работ и материалов: workId → категория материала
+// Связь работ и материалов
 const WORK_MATERIAL_MAP = {
-  pipe_steel_15:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('15') },
-  pipe_steel_20:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('20') },
-  pipe_steel_25:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('25') },
   pipe_steel_32:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('Ду32') },
-  pipe_steel_40:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('40') },
   pipe_steel_50:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('Ду50') },
-  pipe_steel_65:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('65') },
-  pipe_steel_80:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('80') },
-  pipe_steel_100: { matFilter: m => m.category === 'pipe_steel' && m.name.includes('100') },
   pipe_pex_16:    { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d16') },
-  pipe_pex_20:    { matFilter: m => m.category === 'pipe_pex' && (m.name.includes('d20') || (m.name.includes('PEX') && !m.name.includes('d16') && !m.name.includes('d25') && !m.name.includes('d32'))) },
+  pipe_pex_20:    { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d20') },
   pipe_pex_25:    { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d25') },
-  pipe_pex_32:    { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d32') },
   gofra:          { matFilter: m => m.name.includes('гофр') || m.name.includes('защитн') },
   radiator_install: { matFilter: m => m.category === 'radiator_steel' || m.name.toLowerCase().includes('радиатор') },
   register_install: { matFilter: m => m.category === 'convector_infloor' || m.name.toLowerCase().includes('конвектор') },
   insulation_pe:  { matFilter: m => m.category === 'insulation' },
+  insulation_mw_110: { matFilter: m => m.category === 'insulation' },
   collector:      { matFilter: m => m.name.includes('оллектор') || m.name.includes('ребёнк') },
-  hydro_test:     { matFilter: m => m.category === 'pnr' && m.name.includes('испытан') },
-  flush_heating:  { matFilter: m => m.category === 'pnr' && m.name.includes('ромывк') },
+  bottom_conn:    { matFilter: m => m.name.toLowerCase().includes('термоголовк') || m.name.toLowerCase().includes('клапан термо') },
 };
 
 export default function Step10_Summary() {
@@ -36,15 +28,21 @@ export default function Step10_Summary() {
   const contractor = state.contractor;
   const contractorName = data?.contractors?.[contractor]?.name || contractor;
 
-  // Расчёт работ
+  // Объёмы работ
+  const workQty = calculateWorkQuantities(state);
+
+  // Расчёт работ с объёмами
   let totalWork = 0;
   const workRows = (data?.workPrices || []).map(item => {
     const override = state.workPriceOverrides[item.id];
     const resolved = override != null
       ? { price: override, source: 'manual' }
       : getWorkPrice(item, contractor, state.priceMatrix);
-    totalWork += resolved.price || 0;
-    return { ...item, resolved };
+    const qty = workQty[item.id] || 0;
+    const unitPrice = resolved.price || 0;
+    const cost = unitPrice * qty;
+    totalWork += cost;
+    return { ...item, resolved, qty, unitPrice, cost };
   });
 
   // Расчёт материалов
@@ -66,18 +64,20 @@ export default function Step10_Summary() {
 
   // Привязка материалов к работам
   const usedMaterialNums = new Set();
-  const workWithMaterials = workRows.map(work => {
-    const mapping = WORK_MATERIAL_MAP[work.id];
-    let linkedMaterials = [];
-    if (mapping) {
-      linkedMaterials = materialRows.filter(m => {
-        if (usedMaterialNums.has(m.num)) return false;
-        return mapping.matFilter(m);
-      });
-      linkedMaterials.forEach(m => usedMaterialNums.add(m.num));
-    }
-    return { ...work, linkedMaterials };
-  });
+  const workWithMaterials = workRows
+    .filter(w => w.qty > 0 || w.cost > 0) // показываем только с объёмами
+    .map(work => {
+      const mapping = WORK_MATERIAL_MAP[work.id];
+      let linkedMaterials = [];
+      if (mapping) {
+        linkedMaterials = materialRows.filter(m => {
+          if (usedMaterialNums.has(m.num)) return false;
+          return mapping.matFilter(m);
+        });
+        linkedMaterials.forEach(m => usedMaterialNums.add(m.num));
+      }
+      return { ...work, linkedMaterials };
+    });
 
   // Непривязанные материалы
   const unlinkedMaterials = materialRows.filter(m => !usedMaterialNums.has(m.num));
@@ -142,9 +142,8 @@ export default function Step10_Summary() {
           </thead>
           <tbody>
             {workWithMaterials.map((work, wi) => {
-              const workPrice = work.resolved.price || 0;
               const matCost = work.linkedMaterials.reduce((s, m) => s + m.cost, 0);
-              const posTotal = workPrice + matCost;
+              const posTotal = work.cost + matCost;
 
               return (
                 <React.Fragment key={work.id}>
@@ -154,9 +153,9 @@ export default function Step10_Summary() {
                     <td>{work.name}</td>
                     <td style={{ fontSize: '0.82rem', color: 'var(--text2)' }}>работа</td>
                     <td>{work.unit}</td>
-                    <td></td>
-                    <td>{workPrice ? fmt(workPrice) : '—'}</td>
-                    <td>{workPrice ? fmt(workPrice) : '—'}</td>
+                    <td>{work.qty}</td>
+                    <td>{work.unitPrice ? fmt(work.unitPrice) : '—'}</td>
+                    <td>{work.cost ? fmt(work.cost) : '—'}</td>
                     <td style={{ fontSize: '0.78rem', color: 'var(--text2)' }}>{getSourceText(work.resolved)}</td>
                   </tr>
                   {/* Материалы под работой */}
@@ -172,7 +171,7 @@ export default function Step10_Summary() {
                       <td style={{ fontSize: '0.78rem', color: 'var(--text2)' }}>{getMatSourceText(mat.priceSource)}</td>
                     </tr>
                   ))}
-                  {/* Итого позиции (если есть материалы) */}
+                  {/* Итого позиции */}
                   {work.linkedMaterials.length > 0 && (
                     <tr style={{ backgroundColor: '#f8fafc', borderTop: '1px solid var(--border)' }}>
                       <td></td>

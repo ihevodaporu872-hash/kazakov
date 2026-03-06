@@ -99,22 +99,8 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // d32 — магистраль стояковая
-  const pexD32 = overrides[32] != null ? overrides[32] : Math.round(riserPairs * numFloors * 3);
-  if (pexD32 > 0) {
-    materials.push({
-      num: num++,
-      name: 'Труба PEX d32',
-      chars: `Магистраль стояковая, ${riserPairs} пар × ${numFloors} эт. × 3 м`,
-      unit: 'м.п.',
-      qty: pexD32,
-      category: 'pipe_pex',
-      priceKey: 'Трубопровод_PEX_32мм'
-    });
-  }
-
   // Труба защитная гофрированная (для всех PEX)
-  const totalPexLen = pexD16 + pexD20 + pexD25 + pexD32;
+  const totalPexLen = pexD16 + pexD20 + pexD25;
   if (totalPexLen > 0) {
     materials.push({
       num: num++,
@@ -270,6 +256,62 @@ function estimatePrice(name) {
   if (n.includes('воздухоотвод') || n.includes('маевского')) return 200;
   if (n.includes('кронштейн')) return 150;
   return 500;
+}
+
+// Расчёт объёмов работ по параметрам проекта
+export function calculateWorkQuantities(state) {
+  const windowCount = state.windowCount || 0;
+  const floorH = state.floorHeight_mm || 3000;
+  const riserPairs = state.riserPairs || 0;
+  const manifoldOutputs = state.manifoldOutputs || 0;
+  const apartments = state.apartments || 0;
+  const overrides = state.pipeLenByDiam || {};
+
+  let numFloors = 16;
+  if (state.projectData && state.selectedBuilding) {
+    const bldg = state.projectData.buildings[state.selectedBuilding];
+    if (bldg && bldg.floors) {
+      const m = bldg.floors.match(/(\d+)-(\d+)/);
+      if (m) numFloors = parseInt(m[2]) - parseInt(m[1]) + 1;
+    }
+  }
+
+  const totalRiserLen = Math.round((floorH / 1000) * numFloors * riserPairs * 2);
+  const mainPipeLen = Math.round(apartments * 6);
+  const pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 1.5);
+  const pexD20 = overrides[20] != null ? overrides[20] : Math.round(windowCount * 2.0);
+  const pexD25 = overrides[25] != null ? overrides[25] : Math.round(manifoldOutputs * numFloors * 3);
+  const totalPexLen = pexD16 + pexD20 + pexD25;
+  const totalPipeLen = totalRiserLen + mainPipeLen + totalPexLen;
+  const insulLen = totalRiserLen + mainPipeLen;
+
+  return {
+    // Стальные трубопроводы
+    pipe_steel_32: totalRiserLen,
+    pipe_steel_50: mainPipeLen,
+    // PEX
+    pipe_pex_16: pexD16,
+    pipe_pex_20: pexD20,
+    pipe_pex_25: pexD25,
+    // Гофра
+    gofra: totalPexLen,
+    // Коллектор
+    collector: manifoldOutputs * numFloors,
+    // Приборы
+    radiator_install: windowCount,
+    register_install: windowCount,
+    // Узлы
+    bottom_conn: windowCount,
+    end_node: riserPairs * 2,
+    // Изоляция
+    insulation_pe: insulLen,
+    insulation_mw_110: insulLen,
+    // ПНР
+    hydro_test: totalPipeLen,
+    test_heating: totalPipeLen,
+    flush_heating: totalPipeLen,
+    handover_heating: totalPipeLen,
+  };
 }
 
 export function getMaterialPrice(item, priceMatrix, brandsData, brandSelections) {

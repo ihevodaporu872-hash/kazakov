@@ -12,7 +12,7 @@ const PEX_BRANDS = {
   eae:     { name: 'EAE',     prices: { 16: 220, 20: 300, 25: 420, 32: 580 } },
 };
 
-const PEX_DIAMETERS = [16, 20, 25, 32];
+const PEX_DIAMETERS = [16, 20, 25];
 const FITTING_RATE = 0.40; // Фитинги = 40% от стоимости труб
 
 export default function Step7_Piping() {
@@ -26,8 +26,8 @@ export default function Step7_Piping() {
   // Разбивка по диаметрам:
   // d16 — подводки к приборам (~1.5 м.п. на прибор)
   // d20 — разводка от гребёнки (~2 м.п. на прибор)
-  // d25 — магистрали (при >10 приборов на гребёнку)
-  // d32 — стояки PEX (при горизонтальной разводке)
+  // d25 — магистраль этажная
+  // Стояки = стальные трубопроводы (не PEX)
   const manifoldOutputs = state.manifoldOutputs || 0;
   const numFloors = getNumFloors(state);
 
@@ -35,7 +35,6 @@ export default function Step7_Piping() {
     16: { label: 'Подводка к приборам', qty: Math.round(nDevices * 1.5) },
     20: { label: 'Разводка от гребёнки', qty: Math.round(nDevices * 2.0) },
     25: { label: 'Магистраль этажная', qty: Math.round(manifoldOutputs * numFloors * 3) },
-    32: { label: 'Магистраль стояковая', qty: Math.round((state.riserPairs || 0) * numFloors * 3) },
   };
 
   // Пользователь может скорректировать
