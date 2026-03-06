@@ -1,97 +1,58 @@
 import React from 'react';
 import StepCard from '../components/StepCard';
 import { useProject } from '../state/ProjectContext';
-import { fmt, correctPower, nearestStdLengthDown, getAvailableHeights, STD_LENGTHS } from '../calc/heatCalc';
+import { fmt, correctPower, nearestStdLengthDown, getAvailableHeights } from '../calc/heatCalc';
 
 // Порядок типов от самых тонких (слабых) к толстым (мощным)
 const PANEL_TYPES_ORDER = ['11', '21s', '22', '33'];
 
-// Подбирает оптимальный радиатор: минимальный запас, но ≥ требуемой мощности, максимум +15%
-function selectOptimalRadiator(catalog, maxLen, targetPower, deltaT, maxHeight, preferredType) {
-  let best = null;
-  let bestMargin = Infinity;
+// Подбирает радиатор: длина фиксирована по окну, варьируем только высоту и тип.
+// Тип повышается только если при макс. высоте мощности не хватает.
+function selectOptimalRadiator(catalog, deviceLength, targetPower, deltaT, maxHeight) {
+  const stdLen = nearestStdLengthDown(deviceLength);
+  if (stdLen <= 0) return null;
 
-  // Перебираем типы от тонкого к толстому
   for (const pType of PANEL_TYPES_ORDER) {
     const cat = catalog[pType];
     if (!cat) continue;
-    const heights = Object.keys(cat).map(Number).sort((a, b) => a - b).filter(h => h <= Math.max(maxHeight, 300));
+    const heights = Object.keys(cat).map(Number).sort((a, b) => a - b)
+      .filter(h => h <= Math.max(maxHeight, 300));
 
+    // Для каждого типа ищем минимальную высоту, дающую ≥ требуемой мощности
     for (const h of heights) {
       const hData = cat[String(h)];
       if (!hData) continue;
+      const qCat = hData[String(stdLen)];
+      if (!qCat) continue;
+      const qFact = correctPower(qCat, 50, deltaT);
+      const margin = targetPower > 0 ? (qFact - targetPower) / targetPower : 0;
 
-      // Перебираем стандартные длины от минимальной
-      for (const len of STD_LENGTHS) {
-        if (len > maxLen) break;
-        const qCat = hData[String(len)];
-        if (!qCat) continue;
-        const qFact = correctPower(qCat, 50, deltaT);
-        const margin = targetPower > 0 ? (qFact - targetPower) / targetPower : 0;
-
-        if (qFact >= targetPower * 0.98 && margin < bestMargin) {
-          bestMargin = margin;
-          best = { panelType: pType, height: h, length: len, qCat, qFact: Math.round(qFact), margin };
-        }
+      if (qFact >= targetPower * 0.98) {
+        return { panelType: pType, height: h, length: stdLen, qCat, qFact: Math.round(qFact), margin };
       }
+    }
+    // Этот тип при максимальной высоте не справляется — пробуем следующий тип
+  }
+
+  // Ничего не подходит — берём самый мощный вариант (тип 33, макс. высота)
+  for (let ti = PANEL_TYPES_ORDER.length - 1; ti >= 0; ti--) {
+    const pType = PANEL_TYPES_ORDER[ti];
+    const cat = catalog[pType];
+    if (!cat) continue;
+    const heights = Object.keys(cat).map(Number).sort((a, b) => b - a)
+      .filter(h => h <= Math.max(maxHeight, 300));
+    for (const h of heights) {
+      const hData = cat[String(h)];
+      if (!hData) continue;
+      const qCat = hData[String(stdLen)];
+      if (!qCat) continue;
+      const qFact = correctPower(qCat, 50, deltaT);
+      return { panelType: pType, height: h, length: stdLen, qCat, qFact: Math.round(qFact),
+        margin: targetPower > 0 ? (qFact - targetPower) / targetPower : 0 };
     }
   }
 
-  // Если ничего с запасом ≤15% не нашлось, берём ближайший с мин. запасом
-  if (!best || best.margin > 0.15) {
-    // Попытка: если preferred type + max length подходит
-    let fallback = null;
-    let fallbackMargin = Infinity;
-
-    for (const pType of PANEL_TYPES_ORDER) {
-      const cat = catalog[pType];
-      if (!cat) continue;
-      const heights = Object.keys(cat).map(Number).sort((a, b) => a - b).filter(h => h <= Math.max(maxHeight, 300));
-
-      for (const h of heights) {
-        const hData = cat[String(h)];
-        if (!hData) continue;
-        for (const len of STD_LENGTHS) {
-          if (len > maxLen) break;
-          const qCat = hData[String(len)];
-          if (!qCat) continue;
-          const qFact = correctPower(qCat, 50, deltaT);
-          if (qFact >= targetPower * 0.95) {
-            const margin = (qFact - targetPower) / targetPower;
-            if (margin < fallbackMargin) {
-              fallbackMargin = margin;
-              fallback = { panelType: pType, height: h, length: len, qCat, qFact: Math.round(qFact), margin };
-            }
-          }
-        }
-      }
-    }
-    if (fallback) best = fallback;
-  }
-
-  // Если совсем ничего — берём максимально мощный в габарит
-  if (!best) {
-    let maxPower = 0;
-    for (const pType of PANEL_TYPES_ORDER) {
-      const cat = catalog[pType];
-      if (!cat) continue;
-      const heights = Object.keys(cat).map(Number).sort((a, b) => a - b).filter(h => h <= Math.max(maxHeight, 300));
-      for (const h of heights) {
-        const hData = cat[String(h)];
-        if (!hData) continue;
-        const len = nearestStdLengthDown(maxLen);
-        const qCat = hData[String(len)];
-        if (!qCat) continue;
-        const qFact = correctPower(qCat, 50, deltaT);
-        if (qFact > maxPower) {
-          maxPower = qFact;
-          best = { panelType: pType, height: h, length: len, qCat, qFact: Math.round(qFact), margin: targetPower > 0 ? (qFact - targetPower) / targetPower : 0 };
-        }
-      }
-    }
-  }
-
-  return best;
+  return null;
 }
 
 export default function Step4_DeviceSelection() {
@@ -128,7 +89,6 @@ export default function Step4_DeviceSelection() {
       };
     });
 
-    // Группировка одинаковых
     const grouped = groupDevices(perWindow);
 
     return (
@@ -158,7 +118,7 @@ export default function Step4_DeviceSelection() {
           {sufficient ? <span className="tag tag-ok"> Достаточно</span> : <span className="tag tag-over"> Недостаточно</span>}
         </div>
 
-        <h4 style={{ marginTop: 16, fontSize: '0.95rem' }}>Сводка (группировка одинаковых)</h4>
+        <h4 style={{ marginTop: 16, fontSize: '0.95rem' }}>Ведомость подбора (сгруппировано)</h4>
         <table style={{ marginTop: 8 }}>
           <thead><tr><th>Прибор</th><th>Кол-во</th><th>Q треб.</th><th>Q факт.</th><th>Запас</th></tr></thead>
           <tbody>
@@ -178,14 +138,15 @@ export default function Step4_DeviceSelection() {
     );
   }
 
-  // === Панельные радиаторы — автоподбор с минимальным запасом ===
+  // === Панельные радиаторы ===
+  // Длина = ближайшая стандартная к (ширина окна - 200мм)
+  // Тип повышается только если высота не помогает
   const targetH = state.deviceHeight_mm;
 
   var perWindow = state.windows.map((w, i) => {
-    const maxLen = w.deviceLength_mm;
     const pReq = state.powerPerMeter_W * (w.deviceLength_mm / 1000);
 
-    const opt = selectOptimalRadiator(catalogs.radiators, maxLen, pReq, state.deltaT, targetH);
+    const opt = selectOptimalRadiator(catalogs.radiators, w.deviceLength_mm, pReq, state.deltaT, targetH);
     if (!opt) {
       return {
         idx: i + 1, width: w.width_mm, devLen: 0, devHeight: 0,
@@ -202,7 +163,6 @@ export default function Step4_DeviceSelection() {
     };
   });
 
-  // Группировка одинаковых
   const grouped = groupDevices(perWindow);
 
   const totalReq = perWindow.reduce((s, w) => s + w.powerReq, 0);
@@ -212,16 +172,16 @@ export default function Step4_DeviceSelection() {
   return (
     <StepCard step={4} title="Подбор приборов — панельные радиаторы">
       <div className="info-box">
-        Расчётная высота: <strong>{targetH} мм</strong> | Требуемая мощность: <strong>{fmt(state.powerPerMeter_W)} Вт/м</strong> | Δt={state.deltaT.toFixed(0)}°C
-        <br />Автоподбор: минимальный тип панели и длина с запасом ≤15%
+        Расчётная высота: <strong>{targetH} мм</strong> | Мощность: <strong>{fmt(state.powerPerMeter_W)} Вт/м</strong> | Δt={state.deltaT.toFixed(0)}°C
+        <br />Длина прибора = по ширине окна (−200мм). Тип повышается только при нехватке мощности.
       </div>
 
-      <div className={totalMargin <= 15 ? 'result-box' : 'warn-box'} style={{ marginTop: 12 }}>
+      <div className={totalMargin >= -5 && totalMargin <= 15 ? 'result-box' : 'warn-box'} style={{ marginTop: 12 }}>
         Σ Q треб.: <strong>{fmt(totalReq)} Вт</strong> | Σ Q факт.: <strong>{fmt(totalFact)} Вт</strong> |
         Общий запас: <strong>{totalMargin >= 0 ? '+' : ''}{totalMargin.toFixed(1)}%</strong>
       </div>
 
-      <h4 style={{ marginTop: 16, fontSize: '0.95rem' }}>Сводка (группировка одинаковых)</h4>
+      <h4 style={{ marginTop: 16, fontSize: '0.95rem' }}>Ведомость подбора (сгруппировано)</h4>
       <div style={{ overflowX: 'auto', marginTop: 8 }}>
         <table>
           <thead><tr><th>Прибор</th><th>Кол-во</th><th>Q треб.</th><th>Q факт.</th><th>Запас</th><th>Статус</th></tr></thead>
