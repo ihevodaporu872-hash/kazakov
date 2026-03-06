@@ -49,10 +49,8 @@ const initialState = {
   specData: [],
 
   // Шаг 7
-  pipeType: 'ppr',
-  pipeDiam: 25,
-  pipeLen: 0,
-  pipeBrand: 'market',
+  pipeBrand: 'pradex',
+  pipeLenByDiam: {},
 
   // Шаг 8
   contractor: 'kostra',
@@ -63,8 +61,7 @@ const initialState = {
     radiator_steel: 'purmo',
     convector_infloor: 'varmann',
     valve_thermo: 'danfoss',
-    pipe_pex: 'sanext',
-    pipe_ppr: 'sanext',
+    pipe_pex: 'pradex',
     pipe_steel: 'market',
     insulation: 'energoflex',
   },

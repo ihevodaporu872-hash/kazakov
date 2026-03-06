@@ -23,12 +23,11 @@ export function calculateProjectMaterials(state) {
     }
   }
 
-  // === ТРУБОПРОВОДЫ ===
+  // === ТРУБОПРОВОДЫ СТАЛЬНЫЕ ===
 
   // 1. Стояки отопления (стальные) — пара стояков: подача + обратка
-  // Длина стояка = высота этажа × кол-во этажей
   const riserLen_per = (floorH / 1000) * numFloors;
-  const totalRiserLen = riserLen_per * riserPairs * 2; // подача + обратка
+  const totalRiserLen = riserLen_per * riserPairs * 2;
   if (totalRiserLen > 0) {
     materials.push({
       num: num++,
@@ -41,8 +40,7 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // 2. Магистральные трубопроводы (горизонтальная разводка)
-  // Примерно 5-8 м.п. на квартиру для попутной системы
+  // 2. Магистральные трубопроводы стальные (горизонтальная разводка)
   const mainPipeLen = Math.round(apartments * 6);
   if (mainPipeLen > 0) {
     materials.push({
@@ -56,29 +54,74 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // 3. Разводящие трубопроводы PEX к приборам
-  // ~3.5 м.п. на прибор (подача + обратка + подводки)
-  const pexLen = Math.round(windowCount * 3.5);
-  if (pexLen > 0) {
+  // === ТРУБОПРОВОДЫ PEX (по диаметрам) ===
+  const overrides = state.pipeLenByDiam || {};
+
+  // d16 — подводки к приборам (~1.5 м.п. на прибор)
+  const pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 1.5);
+  if (pexD16 > 0) {
     materials.push({
       num: num++,
-      name: `Труба PEX разводящая d${state.pipeDiam || 20}`,
-      chars: `${windowCount} приборов × 3.5 м.п.`,
+      name: 'Труба PEX d16',
+      chars: `Подводка к приборам, ${windowCount} × 1.5 м.п.`,
       unit: 'м.п.',
-      qty: pexLen,
+      qty: pexD16,
       category: 'pipe_pex',
-      priceKey: `Трубопровод_PEX_${state.pipeDiam || 20}мм`
+      priceKey: 'Трубопровод_PEX_16мм'
     });
   }
 
-  // 4. Труба защитная гофрированная (для PEX)
-  if (pexLen > 0) {
+  // d20 — разводка от гребёнки (~2 м.п. на прибор)
+  const pexD20 = overrides[20] != null ? overrides[20] : Math.round(windowCount * 2.0);
+  if (pexD20 > 0) {
+    materials.push({
+      num: num++,
+      name: 'Труба PEX d20',
+      chars: `Разводка от гребёнки, ${windowCount} × 2.0 м.п.`,
+      unit: 'м.п.',
+      qty: pexD20,
+      category: 'pipe_pex',
+      priceKey: 'Трубопровод_PEX_20мм'
+    });
+  }
+
+  // d25 — магистраль этажная
+  const pexD25 = overrides[25] != null ? overrides[25] : Math.round(manifoldOutputs * numFloors * 3);
+  if (pexD25 > 0) {
+    materials.push({
+      num: num++,
+      name: 'Труба PEX d25',
+      chars: `Магистраль этажная, ${manifoldOutputs} вых. × ${numFloors} эт. × 3 м`,
+      unit: 'м.п.',
+      qty: pexD25,
+      category: 'pipe_pex',
+      priceKey: 'Трубопровод_PEX_25мм'
+    });
+  }
+
+  // d32 — магистраль стояковая
+  const pexD32 = overrides[32] != null ? overrides[32] : Math.round(riserPairs * numFloors * 3);
+  if (pexD32 > 0) {
+    materials.push({
+      num: num++,
+      name: 'Труба PEX d32',
+      chars: `Магистраль стояковая, ${riserPairs} пар × ${numFloors} эт. × 3 м`,
+      unit: 'м.п.',
+      qty: pexD32,
+      category: 'pipe_pex',
+      priceKey: 'Трубопровод_PEX_32мм'
+    });
+  }
+
+  // Труба защитная гофрированная (для всех PEX)
+  const totalPexLen = pexD16 + pexD20 + pexD25 + pexD32;
+  if (totalPexLen > 0) {
     materials.push({
       num: num++,
       name: 'Труба защитная гофрированная',
       chars: `Для PEX-разводки`,
       unit: 'м.п.',
-      qty: pexLen,
+      qty: totalPexLen,
       category: 'misc',
       priceKey: null,
       fixedPrice: 60
@@ -115,7 +158,6 @@ export function calculateProjectMaterials(state) {
   });
 
   // === ТЕПЛОИЗОЛЯЦИЯ ===
-  // Изолируются стояки и магистральные трубопроводы
   const insulLen = totalRiserLen + mainPipeLen;
   if (insulLen > 0) {
     materials.push({
@@ -130,7 +172,6 @@ export function calculateProjectMaterials(state) {
   }
 
   // === АРМАТУРА ===
-  // Краны шаровые на стояках: 2 крана на стояк (верх + низ)
   const ballValves = riserPairs * 2 * 2 * heatingZones;
   if (ballValves > 0) {
     materials.push({
@@ -144,7 +185,6 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // Балансировочные клапаны: 1 на стояк
   const balanceValves = riserPairs * 2 * heatingZones;
   if (balanceValves > 0) {
     materials.push({
@@ -158,7 +198,6 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // Воздухоотводчики автоматические (верх каждого стояка)
   const airVents = riserPairs * 2 * heatingZones;
   if (airVents > 0) {
     materials.push({
@@ -173,7 +212,7 @@ export function calculateProjectMaterials(state) {
   }
 
   // === ПНР ===
-  const totalPipeLen = totalRiserLen + mainPipeLen + pexLen;
+  const totalPipeLen = totalRiserLen + mainPipeLen + totalPexLen;
   materials.push({
     num: num++,
     name: 'Гидравлическое испытание системы',
@@ -245,6 +284,13 @@ export function getMaterialPrice(item, priceMatrix, brandsData, brandSelections)
     const brand = brandSelections[item.category];
     if (brand && cat.prices[brand]) {
       const prices = cat.prices[brand];
+      // Для PEX — ищем по диаметру из имени
+      if (item.category === 'pipe_pex') {
+        const dMatch = item.name.match(/d(\d+)/);
+        if (dMatch && prices[dMatch[1]]) {
+          return { price: prices[dMatch[1]], source: 'brand' };
+        }
+      }
       const firstPrice = Object.values(prices)[0];
       if (firstPrice) return { price: firstPrice, source: 'brand' };
     }
