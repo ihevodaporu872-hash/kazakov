@@ -58,17 +58,27 @@ export default function Step6_Specification() {
         <div className="summary-item"><div className="si-label">Σ Q фактическая</div><div className="si-value">{fmt(totalPowerFact)} Вт</div></div>
       </div>
 
-      <h3 style={{ marginTop: 20, fontSize: '1rem' }}>Ведомость подбора приборов</h3>
+      <h3 style={{ marginTop: 20, fontSize: '1rem' }}>Ведомость подбора приборов (сгруппировано)</h3>
       <div style={{ overflowX: 'auto' }}>
         <table>
-          <thead><tr><th>№</th><th>Шир. окна</th><th>Длина прибора</th><th>Высота</th><th>Q треб.</th><th>Прибор</th><th>Q факт.</th></tr></thead>
+          <thead><tr><th>№</th><th>Прибор</th><th>Шир. окна</th><th>Длина</th><th>Высота</th><th>Кол-во</th><th>Q треб.</th><th>Q факт.</th><th>Запас</th></tr></thead>
           <tbody>
-            {state.perWindow.map(w => (
-              <tr key={w.idx}>
-                <td>{w.idx}</td><td>{w.width}</td><td>{w.devLen}</td><td>{w.devHeight}</td>
-                <td>{fmt(w.powerReq)}</td><td style={{ fontSize: '0.82rem' }}>{w.deviceName}</td><td><strong>{fmt(w.powerFact)}</strong></td>
-              </tr>
-            ))}
+            {groupPerWindow(state.perWindow).map((g, i) => {
+              const margin = g.powerReq > 0 ? ((g.powerFact - g.powerReq) / g.powerReq * 100) : 0;
+              return (
+                <tr key={i}>
+                  <td>{i + 1}</td>
+                  <td style={{ fontSize: '0.82rem' }}>{g.deviceName}</td>
+                  <td>{g.width}</td>
+                  <td>{g.devLen}</td>
+                  <td>{g.devHeight}</td>
+                  <td><strong>{g.count}</strong></td>
+                  <td>{fmt(g.powerReq)}</td>
+                  <td><strong>{fmt(g.powerFact)}</strong></td>
+                  <td>{margin >= 0 ? '+' : ''}{margin.toFixed(0)}%</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -90,4 +100,14 @@ export default function Step6_Specification() {
       </div>
     </StepCard>
   );
+}
+
+function groupPerWindow(perWindow) {
+  const map = {};
+  (perWindow || []).forEach(w => {
+    const key = `${w.deviceName}_${w.width}_${w.devLen}_${w.devHeight}`;
+    if (!map[key]) map[key] = { ...w, count: 0 };
+    map[key].count++;
+  });
+  return Object.values(map);
 }
