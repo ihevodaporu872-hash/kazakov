@@ -26,7 +26,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Create service account file
-        run: echo "$GOOGLE_SA" > service_account.json
+        run: python -c "import os; open('service_account.json','w').write(os.environ['GOOGLE_SA'])"
         env:
           GOOGLE_SA: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
 
