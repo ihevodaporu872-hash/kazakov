@@ -27,27 +27,27 @@
         </mxCell>
 
         <!-- Входные параметры -->
-        <mxCell id="b1_inputs" value="&lt;b&gt;Входные параметры:&lt;/b&gt;&lt;br&gt;• Кол-во окон = кол-во приборов (windowCount)&lt;br&gt;• Расход тепла → heatLoad_W (конверт. в Вт)&lt;br&gt;• Высота простенка (wallHeight_mm)&lt;br&gt;• Высота стяжки (screedHeight_mm, по умолч. 100)&lt;br&gt;• Температурный график (schedule)&lt;br&gt;• t внутр. воздуха (tInside, по умолч. 20°C)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b1_group">
+        <mxCell id="b1_inputs" value="&lt;b&gt;Входные параметры:&lt;/b&gt;&lt;br&gt;• Кол-во окон = кол-во приборов&lt;br&gt;• Расход тепла (вводится в кВт/Гкал/МВт → хранится в Вт)&lt;br&gt;• Высота простенка, мм&lt;br&gt;• Высота стяжки, мм (по умолч. 100)&lt;br&gt;• Температурный график (95/70, 80/60 и т.д.)&lt;br&gt;• Температура внутр. воздуха (по умолч. 20°C)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b1_group">
           <mxGeometry x="20" y="50" width="260" height="160" as="geometry"/>
         </mxCell>
 
         <!-- Параметры проекта -->
-        <mxCell id="b1_project" value="&lt;b&gt;Параметры проекта:&lt;/b&gt;&lt;br&gt;• Этажи, пар стояков (riserPairs)&lt;br&gt;• Выходов гребёнок (manifoldOutputs)&lt;br&gt;• Зон отопления (heatingZones)&lt;br&gt;• Квартир (всего, apartments)&lt;br&gt;• Высота этажа (floorHeight_mm)&lt;br&gt;• Толщина изоляции (insulationThickness_mm)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b1_group">
+        <mxCell id="b1_project" value="&lt;b&gt;Параметры проекта:&lt;/b&gt;&lt;br&gt;• Кол-во этажей&lt;br&gt;• Пар стояков (на этаж)&lt;br&gt;• Выходов гребёнок (на этаж)&lt;br&gt;• Зон отопления&lt;br&gt;• Квартир (всего)&lt;br&gt;• Высота этажа, мм&lt;br&gt;• Толщина изоляции, мм" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b1_group">
           <mxGeometry x="300" y="50" width="260" height="160" as="geometry"/>
         </mxCell>
 
         <!-- Дополнительные параметры -->
-        <mxCell id="b1_extra" value="&lt;b&gt;Параметры разводки:&lt;/b&gt;&lt;br&gt;• Тип разводки PEX: radial / series&lt;br&gt;• Длина коридора (corridorLength_m)&lt;br&gt;• Комнат/квартиру (roomsPerApartment)&lt;br&gt;• Квартир/этаж (apartmentsPerFloor)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b1_group">
+        <mxCell id="b1_extra" value="&lt;b&gt;Параметры разводки:&lt;/b&gt;&lt;br&gt;• Тип разводки PEX: лучевая / попутная&lt;br&gt;• Длина коридора, м&lt;br&gt;• Комнат на квартиру (среднее)&lt;br&gt;• Квартир на этаже" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b1_group">
           <mxGeometry x="20" y="230" width="260" height="110" as="geometry"/>
         </mxCell>
 
         <!-- Формулы блока 1 -->
-        <mxCell id="b1_formulas" value="&lt;b&gt;Формулы:&lt;/b&gt;&lt;hr&gt;&lt;b&gt;Конвертация:&lt;/b&gt;&lt;br&gt;kW → ×1000 | Гкал/ч → ×1 163 000 | МВт → ×1 000 000&lt;br&gt;&lt;br&gt;&lt;b&gt;Расчёт Δt:&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Δt = (t_подачи + t_обратки) / 2 − t_внутр&lt;/font&gt;&lt;br&gt;&lt;br&gt;Пример: 80/60, t=20 → Δt = (80+60)/2 − 20 = &lt;b&gt;50°C&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b1_group">
+        <mxCell id="b1_formulas" value="&lt;b&gt;Формулы:&lt;/b&gt;&lt;hr&gt;&lt;b&gt;Конвертация в Ватты:&lt;/b&gt;&lt;br&gt;кВт → ×1000 | Гкал/ч → ×1 163 000 | МВт → ×1 000 000&lt;br&gt;&lt;br&gt;&lt;b&gt;Расчёт Δt (дельта температуры):&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Δt = (t подачи + t обратки) / 2 − t внутр. воздуха&lt;/font&gt;&lt;br&gt;&lt;br&gt;Пример: график 80/60, t внутр.=20 → Δt = (80+60)/2 − 20 = &lt;b&gt;50°C&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b1_group">
           <mxGeometry x="20" y="360" width="540" height="140" as="geometry"/>
         </mxCell>
 
         <!-- Выходы блока 1 -->
-        <mxCell id="b1_outputs" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; windowCount, heatLoad_W, Δt, windows[], schedule, wallHeight_mm, screedHeight_mm" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b1_group">
+        <mxCell id="b1_outputs" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; Кол-во окон, Расход тепла (Вт), Δt, Массив окон, Температурный график, Высота простенка, Высота стяжки" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b1_group">
           <mxGeometry x="20" y="520" width="540" height="40" as="geometry"/>
         </mxCell>
 
@@ -65,12 +65,12 @@
         </mxCell>
 
         <!-- Шаг 2.1 - Удельная мощность -->
-        <mxCell id="b2_step1" value="&lt;b&gt;2.1. Удельная мощность Q_м&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Q_м = Q_общ / (Σ ширин_окон_м − N × 0.2)&lt;/font&gt;&lt;br&gt;&lt;br&gt;Результат: Вт/м — мощность на 1 п.м. прибора" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
+        <mxCell id="b2_step1" value="&lt;b&gt;2.1. Удельная мощность Q_м (Вт/м)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Q_м = Расход тепла / (Σ ширин окон, м − Кол-во окон × 0.2)&lt;/font&gt;&lt;br&gt;&lt;br&gt;Результат: Вт/м — требуемая мощность на 1 п.м. прибора" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
           <mxGeometry x="20" y="50" width="320" height="100" as="geometry"/>
         </mxCell>
 
         <!-- Шаг 2.2 - Длина прибора -->
-        <mxCell id="b2_step2" value="&lt;b&gt;2.2. Длина прибора&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;deviceLength = ширина_окна − 200 мм&lt;/font&gt;&lt;br&gt;&lt;br&gt;Округление вниз до стандартных:&lt;br&gt;400, 500, 600 … 1800, 2000, 2300, 2600, 3000" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
+        <mxCell id="b2_step2" value="&lt;b&gt;2.2. Длина прибора&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Длина прибора = Ширина окна − 200 мм&lt;/font&gt;&lt;br&gt;&lt;br&gt;Округление вниз до стандартных размеров:&lt;br&gt;400, 500, 600 … 1800, 2000, 2300, 2600, 3000" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
           <mxGeometry x="360" y="50" width="320" height="100" as="geometry"/>
         </mxCell>
 
@@ -84,16 +84,16 @@
           <mxGeometry x="260" y="210" width="160" height="60" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b2_h_inFloor" value="&lt;b&gt;Внутрипольные&lt;/b&gt;&lt;br&gt;h = 150 мм (фикс.)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
+        <mxCell id="b2_h_inFloor" value="&lt;b&gt;Внутрипольные&lt;/b&gt;&lt;br&gt;Высота = 150 мм (фикс.)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
           <mxGeometry x="20" y="220" width="180" height="40" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b2_h_wall" value="&lt;b&gt;Настенные / Напольные&lt;/b&gt;&lt;br&gt;h = простенок − стяжка − 200&lt;br&gt;(мин. 300 мм)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
+        <mxCell id="b2_h_wall" value="&lt;b&gt;Настенные / Напольные&lt;/b&gt;&lt;br&gt;Высота = Простенок − Стяжка − 200 мм&lt;br&gt;(минимум 300 мм)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
           <mxGeometry x="480" y="215" width="200" height="50" as="geometry"/>
         </mxCell>
 
         <!-- EN 442 -->
-        <mxCell id="b2_en442" value="&lt;b&gt;2.4. Пересчёт мощности по EN 442&lt;/b&gt;&lt;br&gt;&lt;br&gt;Каталог даёт Q при Δt_кат = 50°C.&lt;br&gt;Фактическая мощность:&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#CC0000&quot; size=&quot;3&quot;&gt;&lt;b&gt;Q_факт = Q_кат × (Δt_факт / 50)^1.3&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;Показатель &lt;b&gt;1.3&lt;/b&gt; — стандарт EN 442 для панельных радиаторов" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b2_group">
+        <mxCell id="b2_en442" value="&lt;b&gt;2.4. Пересчёт мощности по EN 442&lt;/b&gt;&lt;br&gt;&lt;br&gt;Каталог даёт мощность Q при стандартном Δt = 50°C.&lt;br&gt;Пересчёт на фактический Δt:&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#CC0000&quot; size=&quot;3&quot;&gt;&lt;b&gt;Q факт. = Q катал. × (Δt факт. / 50) ^ 1.3&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;Показатель &lt;b&gt;1.3&lt;/b&gt; — стандарт EN 442 для панельных радиаторов" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b2_group">
           <mxGeometry x="20" y="290" width="660" height="110" as="geometry"/>
         </mxCell>
 
@@ -107,19 +107,19 @@
           <mxGeometry x="30" y="450" width="120" height="50" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b2_stdlen" value="stdLen =&lt;br&gt;nearestStdLengthDown&lt;br&gt;(deviceLength)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b2_group">
+        <mxCell id="b2_stdlen" value="Длина прибора&lt;br&gt;округлена вниз до&lt;br&gt;стандартного размера" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b2_group">
           <mxGeometry x="170" y="450" width="130" height="50" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b2_type_loop" value="Тип: 11→21s→22→33&lt;br&gt;(от тонкого к толстому)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="b2_group">
-          <mxGeometry x="320" y="450" width="140" height="50" as="geometry"/>
+        <mxCell id="b2_type_loop" value="Перебор типов:&lt;br&gt;11 → 21s → 22 → 33&lt;br&gt;(от тонкого к толстому)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="b2_group">
+          <mxGeometry x="320" y="445" width="140" height="55" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b2_catalog" value="Q_кат =&lt;br&gt;catalog[тип][h][stdLen]&lt;br&gt;Q_факт = Q_кат×(Δt/50)^1.3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b2_group">
-          <mxGeometry x="480" y="450" width="160" height="50" as="geometry"/>
+        <mxCell id="b2_catalog" value="Берём Q катал.&lt;br&gt;из каталога[тип][высота][длина]&lt;br&gt;Q факт. = Q кат. × (Δt/50)^1.3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b2_group">
+          <mxGeometry x="480" y="445" width="170" height="55" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b2_check" value="Q_факт ≥&lt;br&gt;Q_треб × 0.95?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="b2_group">
+        <mxCell id="b2_check" value="Q факт. ≥&lt;br&gt;Q треб. × 0.95 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="b2_group">
           <mxGeometry x="370" y="520" width="130" height="60" as="geometry"/>
         </mxCell>
 
@@ -159,17 +159,17 @@
         </mxCell>
 
         <!-- Единая высота -->
-        <mxCell id="b2_unified" value="&lt;b&gt;2.7. Единая высота (findBestUnifiedHeight)&lt;/b&gt;&lt;br&gt;&lt;br&gt;Цель: одна высота для всех приборов → эстетика.&lt;br&gt;&lt;br&gt;1. Собрать все доступные высоты ≤ maxHeight&lt;br&gt;2. Для каждой h: определить мин. тип для каждого окна&lt;br&gt;3. &lt;font color=&quot;#0000CC&quot;&gt;score = maxTypeIdx × 100 + failCount × 1000&lt;/font&gt;&lt;br&gt;4. Выбрать h с минимальной оценкой" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b2_group">
+        <mxCell id="b2_unified" value="&lt;b&gt;2.7. Подбор единой высоты для всех приборов&lt;/b&gt;&lt;br&gt;&lt;br&gt;Цель: одна высота для всех приборов → эстетика.&lt;br&gt;&lt;br&gt;1. Собрать все доступные высоты ≤ макс. допустимой&lt;br&gt;2. Для каждой высоты: определить мин. тип панели для каждого окна&lt;br&gt;3. &lt;font color=&quot;#0000CC&quot;&gt;Оценка = макс. индекс типа × 100 + кол-во отказов × 1000&lt;/font&gt;&lt;br&gt;4. Выбрать высоту с минимальной оценкой (тоньше типы = лучше)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b2_group">
           <mxGeometry x="20" y="590" width="660" height="120" as="geometry"/>
         </mxCell>
 
         <!-- Подбор конвекторов -->
-        <mxCell id="b2_conv" value="&lt;b&gt;2.6. Внутрипольные конвекторы&lt;/b&gt;&lt;br&gt;&lt;br&gt;Подбор по &lt;b&gt;удельной мощности (Вт/м)&lt;/b&gt;:&lt;br&gt;1. Глубина: 90/110/130/180/240/300 мм&lt;br&gt;2. Тип: natural (без вент.) / fan (с вент.)&lt;br&gt;3. Q_факт_Вт_м = correctPower(Q_кат_Вт_м, 50, Δt)&lt;br&gt;4. Q_треб = powerPerMeter × (deviceLen / 1000)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
+        <mxCell id="b2_conv" value="&lt;b&gt;2.6. Внутрипольные конвекторы&lt;/b&gt;&lt;br&gt;&lt;br&gt;Подбор по &lt;b&gt;удельной мощности (Вт/м)&lt;/b&gt;:&lt;br&gt;1. Глубина: 90 / 110 / 130 / 180 / 240 / 300 мм&lt;br&gt;2. Тип: без вентилятора / с вентилятором&lt;br&gt;3. Q факт. (Вт/м) = Пересчёт катал. мощности по EN 442&lt;br&gt;4. Q треб. = Удельная мощность × (Длина прибора / 1000)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b2_group">
           <mxGeometry x="20" y="730" width="660" height="110" as="geometry"/>
         </mxCell>
 
         <!-- Выход блока 2 -->
-        <mxCell id="b2_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; perWindow[] = { deviceName, devLen, devHeight, powerReq, powerFact, panelType }" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b2_group">
+        <mxCell id="b2_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; Массив приборов по окнам: название, длина, высота, Q треб., Q факт., тип панели" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b2_group">
           <mxGeometry x="20" y="850" width="660" height="35" as="geometry"/>
         </mxCell>
 
@@ -186,15 +186,15 @@
           <mxGeometry x="10" y="10" width="460" height="30" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b3_thermo" value="&lt;b&gt;Термоголовки (×windowCount):&lt;/b&gt;&lt;br&gt;• Danfoss RA 2991 (встр. датчик, 5-26°C)&lt;br&gt;• Danfoss с выносным датчиком (2 м)&lt;br&gt;• Oventrop Uni LH (встр. датчик, M30×1.5)&lt;br&gt;• Без термоголовки (ручной маховичок)&lt;br&gt;&lt;br&gt;&lt;i&gt;Для внутрипольных → рекомендован выносной&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b3_group">
+        <mxCell id="b3_thermo" value="&lt;b&gt;Термоголовки (× кол-во приборов):&lt;/b&gt;&lt;br&gt;• Danfoss RA 2991 (встр. датчик, 5-26°C)&lt;br&gt;• Danfoss с выносным датчиком (2 м)&lt;br&gt;• Oventrop Uni LH (встр. датчик, M30×1.5)&lt;br&gt;• Без термоголовки (ручной маховичок)&lt;br&gt;&lt;br&gt;&lt;i&gt;Для внутрипольных → рекомендован выносной&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b3_group">
           <mxGeometry x="20" y="50" width="440" height="130" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b3_valve" value="&lt;b&gt;Регулирующие клапаны (×windowCount):&lt;/b&gt;&lt;br&gt;• В составе прибора (included)&lt;br&gt;• Danfoss RA-N DN15, прямой&lt;br&gt;• Oventrop AV9 DN15, угловой&lt;br&gt;• IMI Eclipse с преднастройкой DN15-20" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b3_group">
+        <mxCell id="b3_valve" value="&lt;b&gt;Регулирующие клапаны (× кол-во приборов):&lt;/b&gt;&lt;br&gt;• В составе прибора&lt;br&gt;• Danfoss RA-N DN15, прямой&lt;br&gt;• Oventrop AV9 DN15, угловой&lt;br&gt;• IMI Eclipse с преднастройкой DN15-20" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b3_group">
           <mxGeometry x="20" y="200" width="440" height="100" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b3_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; thermoHead, valve" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b3_group">
+        <mxCell id="b3_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; Выбранная термоголовка, выбранный клапан" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b3_group">
           <mxGeometry x="20" y="310" width="440" height="30" as="geometry"/>
         </mxCell>
 
@@ -215,23 +215,23 @@
           <mxGeometry x="160" y="50" width="150" height="50" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b4_inFloor" value="&lt;b&gt;Внутрипольные (inFloor):&lt;/b&gt;&lt;br&gt;• Клапан RLV DN15 — ×N&lt;br&gt;• Клапан RA-N DN15 — ×N&lt;br&gt;• Переход → PEX Ду16 — ×N компл." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b4_group">
+        <mxCell id="b4_inFloor" value="&lt;b&gt;Внутрипольные:&lt;/b&gt;&lt;br&gt;• Клапан RLV DN15 — × N&lt;br&gt;• Клапан RA-N DN15 — × N&lt;br&gt;• Переход → PEX Ду16 — × N компл." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b4_group">
           <mxGeometry x="20" y="120" width="200" height="90" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b4_floor" value="&lt;b&gt;Напольные (floor):&lt;/b&gt;&lt;br&gt;• Клапан RLV-K DN15 — ×N&lt;br&gt;• Ниппель G1/2&quot; — ×2N&lt;br&gt;• Евроконус G1/2&quot;×PEX — ×2N&lt;br&gt;• L-трубка — ×2N" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b4_group">
+        <mxCell id="b4_floor" value="&lt;b&gt;Напольные:&lt;/b&gt;&lt;br&gt;• Клапан RLV-K DN15 — × N&lt;br&gt;• Ниппель G1/2&quot; — × 2N&lt;br&gt;• Евроконус G1/2&quot; × PEX — × 2N&lt;br&gt;• L-образная трубка — × 2N" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b4_group">
           <mxGeometry x="250" y="120" width="210" height="90" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b4_wall" value="&lt;b&gt;Настенные (wall):&lt;/b&gt;&lt;br&gt;• Клапан RLV-K DN15 — ×N&lt;br&gt;• Ниппель G1/2&quot; — ×2N&lt;br&gt;• Евроконус G1/2&quot;×PEX — ×2N&lt;br&gt;• L-трубка — ×2N" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b4_group">
+        <mxCell id="b4_wall" value="&lt;b&gt;Настенные:&lt;/b&gt;&lt;br&gt;• Клапан RLV-K DN15 — × N&lt;br&gt;• Ниппель G1/2&quot; — × 2N&lt;br&gt;• Евроконус G1/2&quot; × PEX — × 2N&lt;br&gt;• L-образная трубка — × 2N" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="b4_group">
           <mxGeometry x="140" y="230" width="210" height="90" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b4_common" value="&lt;b&gt;Общие позиции (для всех типов):&lt;/b&gt;&lt;br&gt;• Воздухоотводчик (кран Маевского) DN15 — ×N&lt;br&gt;• Кронштейны: настенные ×3N / напольные ×2N&lt;br&gt;&lt;br&gt;N = windowCount (кол-во приборов)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b4_group">
+        <mxCell id="b4_common" value="&lt;b&gt;Общие позиции (для всех типов):&lt;/b&gt;&lt;br&gt;• Воздухоотводчик (кран Маевского) DN15 — × N&lt;br&gt;• Кронштейны: настенные × 3N / напольные × 2N&lt;br&gt;&lt;br&gt;N = кол-во приборов (= кол-во окон)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b4_group">
           <mxGeometry x="20" y="340" width="440" height="80" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b4_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; specData[] (спецификация оборудования)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b4_group">
+        <mxCell id="b4_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; Спецификация оборудования (список позиций)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b4_group">
           <mxGeometry x="20" y="440" width="440" height="30" as="geometry"/>
         </mxCell>
 
@@ -239,44 +239,44 @@
         <!-- БЛОК 5: СТАЛЬНЫЕ СТОЯКИ (красный) -->
         <!-- ========================================== -->
         <mxCell id="b5_group" value="" style="group" vertex="1" connectable="0" parent="1">
-          <mxGeometry x="40" y="760" width="580" height="640" as="geometry"/>
+          <mxGeometry x="40" y="760" width="580" height="680" as="geometry"/>
         </mxCell>
         <mxCell id="b5_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;arcSize=6;" vertex="1" parent="b5_group">
-          <mxGeometry width="580" height="640" as="geometry"/>
+          <mxGeometry width="580" height="680" as="geometry"/>
         </mxCell>
         <mxCell id="b5_title" value="&lt;b&gt;БЛОК 5: СТАЛЬНЫЕ СТОЯКИ&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fontColor=#1a1a2e;" vertex="1" parent="b5_group">
           <mxGeometry x="10" y="10" width="560" height="30" as="geometry"/>
         </mxCell>
 
         <!-- Формула диаметра -->
-        <mxCell id="b5_diam" value="&lt;b&gt;5.1. Диаметр стояка&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#CC0000&quot; size=&quot;3&quot;&gt;&lt;b&gt;d = 18.8 × √((0.86 × Q) / (ΔT × v))&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;Q_стояк = Q_общ_кВт / (riserPairs × heatingZones)&lt;br&gt;ΔT = t_подачи − t_обратки (напр. 80−60 = 20°C)&lt;br&gt;v = 0.7 м/с (скорость теплоносителя)&lt;br&gt;&lt;br&gt;→ Округление вверх до стандартного DN:&lt;br&gt;15, 20, 25, 32, 40, 50, 65, 80, 100" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b5_group">
-          <mxGeometry x="20" y="50" width="540" height="160" as="geometry"/>
+        <mxCell id="b5_diam" value="&lt;b&gt;5.1. Диаметр стояка&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#CC0000&quot; size=&quot;3&quot;&gt;&lt;b&gt;d = 18.8 × √((0.86 × Q) / (ΔT × v))&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;Где:&lt;br&gt;• Q — нагрузка на стояк (кВт) = Расход тепла / (Пар стояков × Зон отопл.)&lt;br&gt;• ΔT — разница подачи и обратки (напр. 80−60 = 20°C)&lt;br&gt;• v — скорость теплоносителя, по умолч. 0.7 м/с&lt;br&gt;&lt;br&gt;→ Результат d (мм) округляется вверх до стандартного DN:&lt;br&gt;DN15, DN20, DN25, DN32, DN40, DN50, DN65, DN80, DN100" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b5_group">
+          <mxGeometry x="20" y="50" width="540" height="180" as="geometry"/>
         </mxCell>
 
         <!-- Длина стояков -->
-        <mxCell id="b5_len" value="&lt;b&gt;5.2. Длина стояков&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;L = floorHeight_м × numFloors × riserPairs × 2 × heatingZones&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b5_group">
-          <mxGeometry x="20" y="225" width="540" height="50" as="geometry"/>
+        <mxCell id="b5_len" value="&lt;b&gt;5.2. Общая длина стояков&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;L = Высота этажа (м) × Кол-во этажей × Пар стояков × 2 (подача+обратка) × Зон отопления&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b5_group">
+          <mxGeometry x="20" y="245" width="540" height="55" as="geometry"/>
         </mxCell>
 
         <!-- Компенсаторы и НО -->
-        <mxCell id="b5_comp" value="&lt;b&gt;5.3. Компенсаторы&lt;/b&gt; (через каждые 4 этажа)&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;комп/стояк = ceil(numFloors/4) − 1&lt;/font&gt;&lt;br&gt;total = комп/стояк × riserPairs × 2 × zones&lt;br&gt;&lt;br&gt;&lt;b&gt;5.4. Неподвижные опоры&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;НО/стояк = комп/стояк + 1&lt;/font&gt;&lt;br&gt;(только при наличии компенсаторов)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b5_group">
-          <mxGeometry x="20" y="290" width="540" height="120" as="geometry"/>
+        <mxCell id="b5_comp" value="&lt;b&gt;5.3. Компенсаторы&lt;/b&gt; (сильфонные, ставятся через каждые 4 этажа)&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;На 1 стояк = округл. вверх (Кол-во этажей / 4) − 1&lt;/font&gt;&lt;br&gt;Всего = На 1 стояк × Пар стояков × 2 × Зон отопления&lt;br&gt;(при ≤ 4 этажах — компенсаторы не нужны)&lt;br&gt;&lt;br&gt;&lt;b&gt;5.4. Неподвижные опоры (НО)&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;На 1 стояк = Компенсаторов на стояк + 1&lt;/font&gt;&lt;br&gt;(только при наличии компенсаторов)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b5_group">
+          <mxGeometry x="20" y="315" width="540" height="140" as="geometry"/>
         </mxCell>
 
         <!-- Арматура -->
-        <mxCell id="b5_valves" value="&lt;b&gt;5.5-5.9. Арматура и комплектующие&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Краны шаровые: riserPairs × 2 × 2 × zones (верх+низ)&lt;br&gt;• Балансир. клапаны: riserPairs × 2 × zones&lt;br&gt;• Гильзы п/п: riserPairs × 2 × zones × numFloors&lt;br&gt;• Пена п/п: ceil(гильзы / 20) баллонов&lt;br&gt;• Грунтовка: L × 0.1 кг/м.п.&lt;br&gt;• Эмаль: L × 0.15 кг/м.п.&lt;br&gt;• Воздухоотв. авто: riserPairs × 2 × zones&lt;br&gt;• Кран спускной DN15: riserPairs × 2 × zones" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b5_group">
-          <mxGeometry x="20" y="425" width="540" height="160" as="geometry"/>
+        <mxCell id="b5_valves" value="&lt;b&gt;5.5–5.9. Арматура и комплектующие&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Краны шаровые: Пар стояков × 2 (подача+обратка) × 2 (верх+низ) × Зон&lt;br&gt;• Балансир. клапаны: Пар стояков × 2 × Зон&lt;br&gt;• Гильзы проходные (п/п): Пар стояков × 2 × Зон × Этажей&lt;br&gt;• Пена противопожарная: округл. вверх (Гильзы / 20) баллонов&lt;br&gt;• Грунтовка: Длина стояков × 0.1 кг/м.п.&lt;br&gt;• Эмаль: Длина стояков × 0.15 кг/м.п.&lt;br&gt;• Воздухоотводчик автомат.: Пар стояков × 2 × Зон (верх стояков)&lt;br&gt;• Кран спускной DN15: Пар стояков × 2 × Зон (низ стояков)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b5_group">
+          <mxGeometry x="20" y="470" width="540" height="160" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b5_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; riserDN, totalRiserLen, compensators, fixedSupports, materials[]" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b5_group">
-          <mxGeometry x="20" y="600" width="540" height="30" as="geometry"/>
+        <mxCell id="b5_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; DN стояка, Общая длина стояков, Кол-во компенсаторов, НО, Список материалов" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b5_group">
+          <mxGeometry x="20" y="640" width="540" height="30" as="geometry"/>
         </mxCell>
 
         <!-- ========================================== -->
         <!-- БЛОК 6: ЭТАЖНЫЕ КОЛЛЕКТОРЫ (фиолетовый) -->
         <!-- ========================================== -->
         <mxCell id="b6_group" value="" style="group" vertex="1" connectable="0" parent="1">
-          <mxGeometry x="660" y="1050" width="340" height="350" as="geometry"/>
+          <mxGeometry x="660" y="1090" width="340" height="350" as="geometry"/>
         </mxCell>
         <mxCell id="b6_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;arcSize=6;" vertex="1" parent="b6_group">
           <mxGeometry width="340" height="350" as="geometry"/>
@@ -285,19 +285,19 @@
           <mxGeometry x="10" y="10" width="320" height="30" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b6_count" value="&lt;b&gt;Количество:&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;totalManifolds = manifoldOutputs × numFloors&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b6_group">
+        <mxCell id="b6_count" value="&lt;b&gt;Количество коллекторов:&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Всего = Выходов гребёнок (на этаж) × Кол-во этажей&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b6_group">
           <mxGeometry x="20" y="50" width="300" height="50" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b6_dn" value="&lt;b&gt;Диаметр коллектора:&lt;/b&gt;&lt;br&gt;≤ 4 отводов → DN32&lt;br&gt;5-8 отводов → DN40&lt;br&gt;&gt; 8 отводов → DN50" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b6_group">
+        <mxCell id="b6_dn" value="&lt;b&gt;Диаметр коллектора:&lt;/b&gt;&lt;br&gt;≤ 4 отводов → DN32&lt;br&gt;5–8 отводов → DN40&lt;br&gt;&gt; 8 отводов → DN50" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b6_group">
           <mxGeometry x="20" y="115" width="300" height="80" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b6_fittings" value="&lt;b&gt;Комплектующие:&lt;/b&gt;&lt;br&gt;• Краны шаровые: totalManifolds × 2&lt;br&gt;• Тройники: totalManifolds × 2&lt;br&gt;• Присоед. фитинги PEX Ду20:&lt;br&gt;  totalManifolds × manifoldOutputs × 2" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b6_group">
+        <mxCell id="b6_fittings" value="&lt;b&gt;Комплектующие:&lt;/b&gt;&lt;br&gt;• Краны шаровые: Кол-во коллекторов × 2&lt;br&gt;• Тройники: Кол-во коллекторов × 2&lt;br&gt;• Присоед. фитинги PEX Ду20:&lt;br&gt;  Кол-во колл. × Выходов гребёнок × 2" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b6_group">
           <mxGeometry x="20" y="210" width="300" height="100" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b6_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; manifolds, fittings" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b6_group">
+        <mxCell id="b6_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; Коллекторы, фитинги" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b6_group">
           <mxGeometry x="20" y="315" width="300" height="25" as="geometry"/>
         </mxCell>
 
@@ -305,10 +305,10 @@
         <!-- БЛОК 7: PEX РАЗВОДКА (синий) -->
         <!-- ========================================== -->
         <mxCell id="b7_group" value="" style="group" vertex="1" connectable="0" parent="1">
-          <mxGeometry x="1040" y="1050" width="460" height="620" as="geometry"/>
+          <mxGeometry x="1040" y="1090" width="460" height="650" as="geometry"/>
         </mxCell>
         <mxCell id="b7_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;arcSize=6;" vertex="1" parent="b7_group">
-          <mxGeometry width="460" height="620" as="geometry"/>
+          <mxGeometry width="460" height="650" as="geometry"/>
         </mxCell>
         <mxCell id="b7_title" value="&lt;b&gt;БЛОК 7: ГОРИЗОНТАЛЬНАЯ РАЗВОДКА PEX&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fontColor=#1a1a2e;" vertex="1" parent="b7_group">
           <mxGeometry x="10" y="10" width="440" height="30" as="geometry"/>
@@ -319,52 +319,52 @@
         </mxCell>
 
         <!-- Лучевая -->
-        <mxCell id="b7_radial" value="&lt;b&gt;ЛУЧЕВАЯ (radial)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Внутриквартирные коллекторы:&lt;/b&gt;&lt;br&gt;outputsPerApt = rooms + 1&lt;br&gt;кол-во = apartments × 2&lt;br&gt;фитинги = apartments × outputs × 2&lt;br&gt;&lt;br&gt;&lt;b&gt;Трубы PEX:&lt;/b&gt;&lt;br&gt;• d16: windowCount × 3 м (подводка)&lt;br&gt;• d20: apartments × 5 м (этаж→кв.)&lt;br&gt;• d25: corridorLen × floors × 2&lt;br&gt;  (или manifoldOutputs × floors × 3)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b7_group">
-          <mxGeometry x="20" y="120" width="200" height="230" as="geometry"/>
+        <mxCell id="b7_radial" value="&lt;b&gt;ЛУЧЕВАЯ (через кв. коллекторы)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Внутриквартирные коллекторы:&lt;/b&gt;&lt;br&gt;Отводов/квартиру = Комнат + 1&lt;br&gt;Кол-во коллекторов = Квартир × 2&lt;br&gt;Фитинги = Квартир × Отводов × 2&lt;br&gt;&lt;br&gt;&lt;b&gt;Трубы PEX:&lt;/b&gt;&lt;br&gt;• d16: Кол-во окон × 3 м (подводка к приборам)&lt;br&gt;• d20: Квартир × 5 м (от этажн. к кварт. колл.)&lt;br&gt;• d25: Длина коридора × Этажей × 2&lt;br&gt;  (или Выходов гребёнок × Этажей × 3)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b7_group">
+          <mxGeometry x="20" y="120" width="200" height="250" as="geometry"/>
         </mxCell>
 
         <!-- Попутная -->
-        <mxCell id="b7_series" value="&lt;b&gt;ПОПУТНАЯ (series)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Тройники:&lt;/b&gt;&lt;br&gt;teeCount = (windowCount − apts) × 2&lt;br&gt;• 25×16×20: min(apts×2, total)&lt;br&gt;• 20×16×16: min(apts×2, rest)&lt;br&gt;• 16×16×16: остальные&lt;br&gt;&lt;br&gt;&lt;b&gt;Трубы PEX:&lt;/b&gt;&lt;br&gt;• d16: windowCount × 1.5 м&lt;br&gt;• d20: windowCount × 2.0 м&lt;br&gt;• d25: corridorLen × floors × 2" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b7_group">
-          <mxGeometry x="240" y="120" width="200" height="230" as="geometry"/>
+        <mxCell id="b7_series" value="&lt;b&gt;ПОПУТНАЯ (через тройники)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Тройники:&lt;/b&gt;&lt;br&gt;Всего = (Кол-во окон − Квартир) × 2&lt;br&gt;• 25×16×20: первый от магистрали&lt;br&gt;• 20×16×16: второй тройник&lt;br&gt;• 16×16×16: остальные&lt;br&gt;&lt;br&gt;&lt;b&gt;Трубы PEX:&lt;/b&gt;&lt;br&gt;• d16: Кол-во окон × 1.5 м (подводка)&lt;br&gt;• d20: Кол-во окон × 2.0 м (между приб.)&lt;br&gt;• d25: Длина коридора × Этажей × 2" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b7_group">
+          <mxGeometry x="240" y="120" width="200" height="250" as="geometry"/>
         </mxCell>
 
         <!-- Общая длина -->
-        <mxCell id="b7_total" value="&lt;b&gt;Общая длина PEX:&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;totalPexLen = pexD16 + pexD20 + pexD25&lt;/font&gt;&lt;br&gt;(может быть переопределена вручную)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b7_group">
-          <mxGeometry x="20" y="370" width="420" height="60" as="geometry"/>
+        <mxCell id="b7_total" value="&lt;b&gt;Общая длина PEX:&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Общая длина = PEX d16 + PEX d20 + PEX d25&lt;/font&gt;&lt;br&gt;(может быть переопределена вручную)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b7_group">
+          <mxGeometry x="20" y="390" width="420" height="60" as="geometry"/>
         </mxCell>
 
         <!-- Дополнительные PEX -->
-        <mxCell id="b7_extra" value="&lt;b&gt;Комплектующие PEX:&lt;/b&gt;&lt;br&gt;• Гофра: totalPexLen × 0.6 (60%)&lt;br&gt;• Изоляция ВПЭ: totalPexLen × 0.4 (40%)&lt;br&gt;• Хомуты: totalPexLen × 2 (2 шт/м.п.)&lt;br&gt;• Муфты: floor(totalPexLen / 200)&lt;br&gt;• Пресс-гильзы: windowCount×2 + муфты" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b7_group">
-          <mxGeometry x="20" y="445" width="420" height="110" as="geometry"/>
+        <mxCell id="b7_extra" value="&lt;b&gt;Комплектующие PEX:&lt;/b&gt;&lt;br&gt;• Гофра защитная: Общая длина PEX × 0.6 (60% — внутри квартир)&lt;br&gt;• Изоляция ВПЭ: Общая длина PEX × 0.4 (40% — в коридорах)&lt;br&gt;• Хомуты крепления: Общая длина PEX × 2 шт/м.п.&lt;br&gt;• Соединительные муфты: округл. вниз (Общая длина / 200 м бухта)&lt;br&gt;• Пресс-гильзы: Кол-во приборов × 2 + Муфты" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b7_group">
+          <mxGeometry x="20" y="465" width="420" height="120" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b7_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; pexD16, pexD20, pexD25, totalPexLen, materials[]" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b7_group">
-          <mxGeometry x="20" y="575" width="420" height="30" as="geometry"/>
+        <mxCell id="b7_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; Длины PEX d16/d20/d25, Общая длина PEX, Список материалов" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b7_group">
+          <mxGeometry x="20" y="605" width="420" height="30" as="geometry"/>
         </mxCell>
 
         <!-- ========================================== -->
         <!-- БЛОК 8: ИТОГОВАЯ СМЕТА (серый) -->
         <!-- ========================================== -->
         <mxCell id="b8_group" value="" style="group" vertex="1" connectable="0" parent="1">
-          <mxGeometry x="1540" y="1050" width="350" height="340" as="geometry"/>
+          <mxGeometry x="1540" y="1090" width="350" height="370" as="geometry"/>
         </mxCell>
         <mxCell id="b8_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;arcSize=6;" vertex="1" parent="b8_group">
-          <mxGeometry width="350" height="340" as="geometry"/>
+          <mxGeometry width="350" height="370" as="geometry"/>
         </mxCell>
         <mxCell id="b8_title" value="&lt;b&gt;БЛОК 8: ПНР И ИТОГОВАЯ СМЕТА&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fontColor=#1a1a2e;" vertex="1" parent="b8_group">
           <mxGeometry x="10" y="10" width="330" height="30" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b8_pnr" value="&lt;b&gt;Пусконаладочные работы (ПНР):&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;totalPipeLen = totalRiserLen + totalPexLen&lt;/font&gt;&lt;br&gt;&lt;br&gt;• Гидравлич. испытание — totalPipeLen м.п.&lt;br&gt;• Промывка системы — totalPipeLen м.п.&lt;br&gt;• Опробование — totalPipeLen м.п.&lt;br&gt;• Сдача системы — 1 компл." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b8_group">
+        <mxCell id="b8_pnr" value="&lt;b&gt;Пусконаладочные работы (ПНР):&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;Общая длина труб = Длина стояков + Длина PEX&lt;/font&gt;&lt;br&gt;&lt;br&gt;• Гидравлич. испытание — Общая длина, м.п.&lt;br&gt;• Промывка системы — Общая длина, м.п.&lt;br&gt;• Опробование — Общая длина, м.п.&lt;br&gt;• Сдача системы — 1 компл." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="b8_group">
           <mxGeometry x="20" y="50" width="310" height="130" as="geometry"/>
         </mxCell>
 
-        <mxCell id="b8_pricing" value="&lt;b&gt;Ценообразование (3 уровня):&lt;/b&gt;&lt;br&gt;1. Рыночная матрица (price_matrix.json)&lt;br&gt;2. Бренд (brands.json)&lt;br&gt;3. Фиксированная оценка (fixedPrice)&lt;br&gt;&lt;br&gt;&lt;b&gt;Работы:&lt;/b&gt; подрядчик → сосед → матрица" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b8_group">
-          <mxGeometry x="20" y="195" width="310" height="100" as="geometry"/>
+        <mxCell id="b8_pricing" value="&lt;b&gt;Ценообразование (3 уровня приоритета):&lt;/b&gt;&lt;br&gt;1. Рыночная матрица цен&lt;br&gt;2. Цена по выбранному бренду&lt;br&gt;3. Фиксированная оценочная цена&lt;br&gt;&lt;br&gt;&lt;b&gt;Работы:&lt;/b&gt; подрядчик → соседний подрядчик → матрица" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="b8_group">
+          <mxGeometry x="20" y="200" width="310" height="115" as="geometry"/>
         </mxCell>
 
         <mxCell id="b8_output" value="&lt;b&gt;ВЫХОД →&lt;/b&gt; Итоговая смета (материалы + работы + цены)" style="rounded=1;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="b8_group">
-          <mxGeometry x="20" y="305" width="310" height="25" as="geometry"/>
+          <mxGeometry x="20" y="330" width="310" height="25" as="geometry"/>
         </mxCell>
 
         <!-- ========================================== -->
@@ -372,42 +372,42 @@
         <!-- ========================================== -->
 
         <!-- Блок1 → Блок2 -->
-        <mxCell id="arrow_1_2" value="windowCount,&lt;br&gt;heatLoad_W, Δt,&lt;br&gt;windows[]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#0000CC;fontColor=#0000CC;fontSize=9;exitX=1;exitY=0.85;exitDx=0;exitDy=0;entryX=0;entryY=0.1;entryDx=0;entryDy=0;" edge="1" parent="1" source="b1_bg" target="b2_bg">
+        <mxCell id="arrow_1_2" value="Кол-во окон,&lt;br&gt;Расход тепла, Δt,&lt;br&gt;Массив окон" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#0000CC;fontColor=#0000CC;fontSize=9;exitX=1;exitY=0.85;exitDx=0;exitDy=0;entryX=0;entryY=0.1;entryDx=0;entryDy=0;" edge="1" parent="1" source="b1_bg" target="b2_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
         <!-- Блок2 → Блок3 -->
-        <mxCell id="arrow_2_3" value="perWindow[],&lt;br&gt;deviceType" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#006600;fontColor=#006600;fontSize=9;exitX=1;exitY=0.15;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="b2_bg" target="b3_bg">
+        <mxCell id="arrow_2_3" value="Приборы по окнам,&lt;br&gt;Тип прибора" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#006600;fontColor=#006600;fontSize=9;exitX=1;exitY=0.15;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="b2_bg" target="b3_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
         <!-- Блок3 → Блок4 -->
-        <mxCell id="arrow_3_4" value="thermoHead,&lt;br&gt;valve" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#CC0000;fontColor=#CC0000;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b3_bg" target="b4_bg">
+        <mxCell id="arrow_3_4" value="Термоголовка,&lt;br&gt;Клапан" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#CC0000;fontColor=#CC0000;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b3_bg" target="b4_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
         <!-- Блок1 → Блок5 -->
-        <mxCell id="arrow_1_5" value="heatLoad_W,&lt;br&gt;riserPairs,&lt;br&gt;heatingZones,&lt;br&gt;numFloors" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#CC0000;fontColor=#CC0000;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b1_bg" target="b5_bg">
+        <mxCell id="arrow_1_5" value="Расход тепла,&lt;br&gt;Пар стояков,&lt;br&gt;Зон отопления,&lt;br&gt;Кол-во этажей" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#CC0000;fontColor=#CC0000;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b1_bg" target="b5_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
         <!-- Блок5 → Блок6 -->
-        <mxCell id="arrow_5_6" value="riserDN,&lt;br&gt;totalRiserLen" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#9673a6;fontColor=#9673a6;fontSize=9;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="b5_bg" target="b6_bg">
+        <mxCell id="arrow_5_6" value="DN стояка,&lt;br&gt;Длина стояков" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#9673a6;fontColor=#9673a6;fontSize=9;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="b5_bg" target="b6_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
         <!-- Блок6 → Блок7 -->
-        <mxCell id="arrow_6_7" value="manifolds" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#6c8ebf;fontColor=#6c8ebf;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="b6_bg" target="b7_bg">
+        <mxCell id="arrow_6_7" value="Коллекторы" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#6c8ebf;fontColor=#6c8ebf;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="b6_bg" target="b7_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
         <!-- Блок7 → Блок8 -->
-        <mxCell id="arrow_7_8" value="totalPexLen,&lt;br&gt;materials[]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#666666;fontColor=#666666;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="b7_bg" target="b8_bg">
+        <mxCell id="arrow_7_8" value="Общая длина PEX,&lt;br&gt;Список материалов" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#666666;fontColor=#666666;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="b7_bg" target="b8_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
         <!-- Блок4 → Блок8 (specData) -->
-        <mxCell id="arrow_4_8" value="specData[]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#666666;fontColor=#666666;fontSize=9;dashed=1;exitX=1;exitY=0.8;exitDx=0;exitDy=0;entryX=1;entryY=0.2;entryDx=0;entryDy=0;" edge="1" parent="1" source="b4_bg" target="b8_bg">
+        <mxCell id="arrow_4_8" value="Спецификация" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#666666;fontColor=#666666;fontSize=9;dashed=1;exitX=1;exitY=0.8;exitDx=0;exitDy=0;entryX=1;entryY=0.2;entryDx=0;entryDy=0;" edge="1" parent="1" source="b4_bg" target="b8_bg">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
@@ -415,56 +415,56 @@
         <!-- ЛЕГЕНДА -->
         <!-- ========================================== -->
         <mxCell id="legend_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#333333;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="1440" width="580" height="200" as="geometry"/>
+          <mxGeometry x="40" y="1480" width="580" height="200" as="geometry"/>
         </mxCell>
         <mxCell id="legend_title" value="&lt;b&gt;ЛЕГЕНДА&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=13;fontColor=#1a1a2e;" vertex="1" parent="1">
-          <mxGeometry x="250" y="1450" width="160" height="25" as="geometry"/>
+          <mxGeometry x="250" y="1490" width="160" height="25" as="geometry"/>
         </mxCell>
 
         <mxCell id="leg1" value="" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="60" y="1485" width="30" height="20" as="geometry"/>
+          <mxGeometry x="60" y="1525" width="30" height="20" as="geometry"/>
         </mxCell>
-        <mxCell id="leg1t" value="Исходные данные / PEX" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="1483" width="200" height="24" as="geometry"/>
+        <mxCell id="leg1t" value="Исходные данные / Разводка PEX" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1523" width="220" height="24" as="geometry"/>
         </mxCell>
 
         <mxCell id="leg2" value="" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="60" y="1515" width="30" height="20" as="geometry"/>
+          <mxGeometry x="60" y="1555" width="30" height="20" as="geometry"/>
         </mxCell>
-        <mxCell id="leg2t" value="Подбор приборов / ветвления" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="1513" width="200" height="24" as="geometry"/>
+        <mxCell id="leg2t" value="Подбор приборов / Ветвления решений" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1553" width="250" height="24" as="geometry"/>
         </mxCell>
 
         <mxCell id="leg3" value="" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="60" y="1545" width="30" height="20" as="geometry"/>
+          <mxGeometry x="60" y="1585" width="30" height="20" as="geometry"/>
         </mxCell>
-        <mxCell id="leg3t" value="Термоголовки, клапаны / выходы блоков" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="1543" width="250" height="24" as="geometry"/>
+        <mxCell id="leg3t" value="Термоголовки, клапаны / Выходы блоков" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1583" width="260" height="24" as="geometry"/>
         </mxCell>
 
         <mxCell id="leg4" value="" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="60" y="1575" width="30" height="20" as="geometry"/>
+          <mxGeometry x="60" y="1615" width="30" height="20" as="geometry"/>
         </mxCell>
-        <mxCell id="leg4t" value="Стальные стояки / узлы подключения" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="1573" width="250" height="24" as="geometry"/>
+        <mxCell id="leg4t" value="Стальные стояки / Узлы подключения" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1613" width="260" height="24" as="geometry"/>
         </mxCell>
 
         <mxCell id="leg5" value="" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="340" y="1485" width="30" height="20" as="geometry"/>
+          <mxGeometry x="340" y="1525" width="30" height="20" as="geometry"/>
         </mxCell>
-        <mxCell id="leg5t" value="Формулы / коллекторы / цены" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="380" y="1483" width="220" height="24" as="geometry"/>
+        <mxCell id="leg5t" value="Формулы расчёта / Коллекторы / Цены" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1523" width="240" height="24" as="geometry"/>
         </mxCell>
 
         <mxCell id="leg6" value="" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="340" y="1515" width="30" height="20" as="geometry"/>
+          <mxGeometry x="340" y="1555" width="30" height="20" as="geometry"/>
         </mxCell>
-        <mxCell id="leg6t" value="Детали расчёта / итоги" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="380" y="1513" width="200" height="24" as="geometry"/>
+        <mxCell id="leg6t" value="Детали расчёта / Итоговая смета" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1553" width="220" height="24" as="geometry"/>
         </mxCell>
 
-        <mxCell id="leg_note" value="&lt;i&gt;Файл: test-app/src/calc/ (heatCalc.js, materialCalc.js)&lt;br&gt;Шаги: test-app/src/steps/Step1..Step10&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="60" y="1605" width="540" height="30" as="geometry"/>
+        <mxCell id="leg_note" value="&lt;i&gt;Исходный код: test-app/src/calc/ (heatCalc.js, materialCalc.js)&lt;br&gt;Шаги интерфейса: test-app/src/steps/Step1..Step10&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1645" width="540" height="30" as="geometry"/>
         </mxCell>
 
       </root>
