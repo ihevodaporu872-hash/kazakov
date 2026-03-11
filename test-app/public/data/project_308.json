@@ -54,6 +54,7 @@
       "riserPairs": 2,
       "manifoldOutputs": 9,
       "heatingZones": 2,
+      "zoneBoundaries": [13],
       "corridorLength_m": 50,
       "roomsPerApartment": 2,
       "apartmentsPerFloor": 11,

@@ -16,6 +16,18 @@ function getNumFloors(state) {
   return 16;
 }
 
+// Получить верхний этаж здания (абсолютный номер)
+function getTopFloor(state) {
+  if (state.projectData && state.selectedBuilding) {
+    const bldg = state.projectData.buildings[state.selectedBuilding];
+    if (bldg && bldg.floors) {
+      const m = bldg.floors.match(/(\d+)-(\d+)/);
+      if (m) return parseInt(m[2]);
+    }
+  }
+  return getNumFloors(state);
+}
+
 // Подбор диаметра стояка по формуле:
 // d = 18.8 * sqrt((0.86 * Q) / (dT * v))
 // Q — тепловая нагрузка на стояк, кВт
@@ -24,12 +36,11 @@ function getNumFloors(state) {
 // Результат в мм → округляем до стандартного DN
 function calcRiserDiameter(heatLoad_kW, schedule, velocity_ms) {
   const [ts, tr] = schedule.split('/').map(Number);
-  const dT = ts - tr; // разница подачи и обратки
+  const dT = ts - tr;
   const v = velocity_ms || 0.7;
   if (dT <= 0 || heatLoad_kW <= 0) return 32;
 
   const d_mm = 18.8 * Math.sqrt((0.86 * heatLoad_kW) / (dT * v));
-  // Стандартные DN: 15, 20, 25, 32, 40, 50, 65, 80, 100
   const STD_DN = [15, 20, 25, 32, 40, 50, 65, 80, 100];
   for (const dn of STD_DN) {
     if (dn >= d_mm) return dn;
@@ -37,12 +48,81 @@ function calcRiserDiameter(heatLoad_kW, schedule, velocity_ms) {
   return STD_DN[STD_DN.length - 1];
 }
 
-// Расчёт компенсаторов: 1 на каждые 4 этажа
+// === РАСЧЁТ ДЛИНЫ СТОЯКОВ ПО ЗОНАМ ===
+// Каждый стояк идёт от подвала до верхнего этажа своей зоны.
+// Длина = верхний_этаж_зоны × высота_этажа + 1м (подземная часть / 1-й этаж выше)
+// Для не-верхних зон: +1 этаж (переход/воздухоудаление над зоной)
+function calcZoneRiserLengths(zoneBoundaries, topFloor, floorH_m) {
+  const zones = [];
+  const bounds = Array.isArray(zoneBoundaries) && zoneBoundaries.length > 0
+    ? [...zoneBoundaries]
+    : [];
+
+  // Верхние этажи каждой зоны
+  const zoneTopFloors = [...bounds, topFloor];
+
+  for (let i = 0; i < zoneTopFloors.length; i++) {
+    const ztf = zoneTopFloors[i];
+    const isLastZone = i === zoneTopFloors.length - 1;
+    // Не-верхняя зона: стояк идёт на 1 этаж выше верхнего этажа зоны
+    const effectiveFloors = isLastZone ? ztf : ztf + 1;
+    const length = Math.round(effectiveFloors * floorH_m + 1); // +1м подвал
+    const prevTop = i === 0 ? 0 : zoneTopFloors[i - 1];
+    const floorsInZone = ztf - prevTop;
+
+    zones.push({
+      zoneNum: i + 1,
+      topFloor: ztf,
+      floorsInZone,
+      riserLength: length,
+    });
+  }
+
+  return zones;
+}
+
+// === РАСХОД ГРУНТОВКИ/КРАСКИ В ЗАВИСИМОСТИ ОТ DN ===
+function getPrimerRate(dn) {
+  // кг/м.п. грунтовки ГФ-021 по наружному диаметру трубы
+  if (dn <= 20) return 0.03;
+  if (dn <= 32) return 0.05;
+  if (dn <= 50) return 0.08;
+  return 0.12;
+}
+
+function getPaintRate(dn) {
+  // кг/м.п. эмали ПФ-115 (~1.5× от грунтовки)
+  if (dn <= 20) return 0.05;
+  if (dn <= 32) return 0.08;
+  if (dn <= 50) return 0.12;
+  return 0.18;
+}
+
+// === КОМПЕНСАТОРЫ ПО СП 60.13330 ===
+// Максимальное расстояние между неподвижными опорами зависит от DN трубы.
+// При превышении — ставится компенсатор сильфонный осевой.
+function getMaxCompensatorSpacing(dn) {
+  // СП 60.13330 — допустимые расстояния для стальных труб ВГП
+  if (dn <= 25) return 12;  // DN15–25: макс 12 м (~4 этажа по 3 м)
+  if (dn <= 40) return 15;  // DN32–40: макс 15 м (~5 этажей)
+  return 18;                 // DN50+:   макс 18 м (~6 этажей)
+}
+
+// Компенсаторы для одного стояка в зоне
+function calcCompensatorsForRiser(riserLength, dn) {
+  const maxSpacing = getMaxCompensatorSpacing(dn);
+  return Math.max(0, Math.ceil(riserLength / maxSpacing) - 1);
+}
+
+// Неподвижные опоры = компенсаторы + 1 (между каждыми двумя НО — один компенсатор)
+function calcFixedSupportsForRiser(compensators) {
+  return compensators > 0 ? compensators + 1 : 0;
+}
+
+// Обратная совместимость — старые функции
 function calcCompensators(numFloors) {
   return Math.max(0, Math.ceil(numFloors / 4) - 1);
 }
-
-// Неподвижные опоры = компенсаторы + 1
 function calcFixedSupports(compensators) {
   return compensators > 0 ? compensators + 1 : 0;
 }
@@ -72,23 +152,65 @@ export function calculateProjectMaterials(state) {
   const velocity = state.riserVelocity_ms || 0.7;
   const schedule = state.schedule || '80/60';
   const heatLoad_kW = (state.heatLoad_W || 0) / 1000;
+  const zoneBoundaries = state.zoneBoundaries || [];
+  const topFloor = getTopFloor(state);
 
   // ================================================================
-  // БЛОК 5: СТАЛЬНЫЕ ТРУБОПРОВОДЫ (СТОЯКИ)
+  // БЛОК 5: СТАЛЬНЫЕ ТРУБОПРОВОДЫ (СТОЯКИ) — с учётом зон
   // ================================================================
 
-  // Диаметр стояка — рассчитываем по формуле
+  // Диаметр стояка
   const heatPerRiser = riserPairs > 0 ? heatLoad_kW / (riserPairs * heatingZones) : 0;
   const riserDN = calcRiserDiameter(heatPerRiser, schedule, velocity);
+  const maxSpacing = getMaxCompensatorSpacing(riserDN);
 
-  // Длина стояков: пар стояков × этажей × высота этажа × 2 (подача + обратка)
-  const riserLen_per = (floorH / 1000) * numFloors;
-  const totalRiserLen = Math.round(riserLen_per * riserPairs * 2 * heatingZones);
+  // Расчёт длины стояков по зонам (каждый стояк идёт от подвала)
+  const floorH_m = floorH / 1000;
+  const zoneData = calcZoneRiserLengths(zoneBoundaries, topFloor, floorH_m);
+  const pipesPerPair = 2; // подача + обратка
+
+  // Суммы на 1 пару стояков (подача + обратка = 2 трубы)
+  let riserLenPerPair = 0;   // м.п. на 1 пару
+  let compPerPair = 0;       // компенсаторов на 1 пару
+  let fixedPerPair = 0;      // НО на 1 пару
+  let sleevesPerPair = 0;    // гильз на 1 пару
+  const zoneDetails = [];
+
+  zoneData.forEach(zone => {
+    const zonePairLen = zone.riserLength * pipesPerPair; // длина на 1 пару в зоне
+    const compPerRiser = calcCompensatorsForRiser(zone.riserLength, riserDN);
+    const fixedPerRiser = calcFixedSupportsForRiser(compPerRiser);
+    const sleevePerRiser = Math.round(zone.riserLength / floorH_m);
+
+    riserLenPerPair += zonePairLen;
+    compPerPair += compPerRiser * pipesPerPair;
+    fixedPerPair += fixedPerRiser * pipesPerPair;
+    sleevesPerPair += sleevePerRiser * pipesPerPair;
+
+    zoneDetails.push({
+      ...zone,
+      zonePairLen,
+      compPerRiser,
+      fixedPerRiser,
+      sleevePerRiser,
+    });
+  });
+
+  // Итого: умножаем на кол-во пар стояков
+  const totalRiserLen = riserLenPerPair * riserPairs;
+  const totalCompensators = compPerPair * riserPairs;
+  const totalFixedSupports = fixedPerPair * riserPairs;
+  const totalFireSleeves = sleevesPerPair * riserPairs;
+
+  // Стояки — общая длина
   if (totalRiserLen > 0) {
+    const perPairDesc = zoneDetails.map(z =>
+      `Зона ${z.zoneNum} (до ${z.topFloor} эт.): ${z.riserLength} м × 2`
+    ).join('; ');
     materials.push({
       num: num++,
       name: `Трубопровод стальной стояков отопления Ду${riserDN}`,
-      chars: `${riserPairs} пар × ${numFloors} эт. × ${(floorH / 1000).toFixed(1)}м × 2 × ${heatingZones} зон`,
+      chars: `${perPairDesc} = ${riserLenPerPair} м/пару × ${riserPairs} пар = ${totalRiserLen} м.п.`,
       unit: 'м.п.',
       qty: totalRiserLen,
       category: 'pipe_steel',
@@ -97,14 +219,15 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // Компенсаторы — через каждые 4 этажа на каждый стояк
-  const compensatorsPerRiser = calcCompensators(numFloors);
-  const totalCompensators = compensatorsPerRiser * riserPairs * 2 * heatingZones;
+  // Компенсаторы по СП 60.13330 (макс. расстояние между НО зависит от DN)
   if (totalCompensators > 0) {
+    const perPairDesc = zoneDetails.map(z =>
+      `Зона ${z.zoneNum}: ${z.compPerRiser} шт/стояк × 2`
+    ).join('; ');
     materials.push({
       num: num++,
       name: `Компенсатор сильфонный осевой Ду${riserDN}`,
-      chars: `${compensatorsPerRiser} шт./стояк × ${riserPairs * 2 * heatingZones} стояков (через каждые 4 этажа)`,
+      chars: `${perPairDesc} = ${compPerPair} шт/пару × ${riserPairs} пар (макс. ${maxSpacing} м, СП 60.13330)`,
       unit: 'шт',
       qty: totalCompensators,
       category: 'pipe_steel',
@@ -113,14 +236,15 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // Неподвижные опоры = компенсаторы + 1 на стояк
-  const fixedSupportsPerRiser = calcFixedSupports(compensatorsPerRiser);
-  const totalFixedSupports = fixedSupportsPerRiser * riserPairs * 2 * heatingZones;
+  // Неподвижные опоры по СП (между каждыми двумя НО — один компенсатор)
   if (totalFixedSupports > 0) {
+    const perPairDesc = zoneDetails.map(z =>
+      `Зона ${z.zoneNum}: ${z.fixedPerRiser} шт/стояк × 2`
+    ).join('; ');
     materials.push({
       num: num++,
       name: `Неподвижная опора (НО) Ду${riserDN}`,
-      chars: `${fixedSupportsPerRiser} шт./стояк (= компенсаторы + 1)`,
+      chars: `${perPairDesc} = ${fixedPerPair} шт/пару × ${riserPairs} пар (СП 60.13330)`,
       unit: 'шт',
       qty: totalFixedSupports,
       category: 'pipe_steel',
@@ -131,12 +255,12 @@ export function calculateProjectMaterials(state) {
   }
 
   // Краны шаровые на стояках (по 2 на каждый стояк: верх + низ)
-  const ballValves = riserPairs * 2 * 2 * heatingZones;
+  const ballValves = pipesPerPair * riserPairs * 2 * heatingZones;
   if (ballValves > 0) {
     materials.push({
       num: num++,
       name: `Кран шаровой Ду${riserDN}`,
-      chars: `На стояках: ${riserPairs} пар × 2 × 2 × ${heatingZones} зон`,
+      chars: `2 (подача+обратка) × ${riserPairs} пар × 2 (верх+низ) × ${heatingZones} зон`,
       unit: 'шт',
       qty: ballValves,
       category: 'valve_thermo',
@@ -151,7 +275,7 @@ export function calculateProjectMaterials(state) {
     materials.push({
       num: num++,
       name: `Клапан балансировочный Ду${riserDN}`,
-      chars: `На стояках`,
+      chars: `На стояках: ${riserPairs} пар × 2 × ${heatingZones} зон`,
       unit: 'шт',
       qty: balanceValves,
       category: 'valve_thermo',
@@ -160,13 +284,13 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // Воздухоотводчики — в верхних точках каждого стояка
-  const airVents = riserPairs * 2 * heatingZones;
+  // Воздухоотводчики — в верхних точках каждого стояка (только на подаче)
+  const airVents = riserPairs * heatingZones;
   if (airVents > 0) {
     materials.push({
       num: num++,
       name: 'Воздухоотводчик автоматический',
-      chars: `Верх стояков`,
+      chars: `Верх стояков: ${riserPairs} пар × ${heatingZones} зон`,
       unit: 'шт',
       qty: airVents,
       category: 'valve_thermo',
@@ -176,12 +300,12 @@ export function calculateProjectMaterials(state) {
   }
 
   // Спускники — в нижних точках каждого стояка
-  const drains = riserPairs * 2 * heatingZones;
+  const drains = riserPairs * heatingZones;
   if (drains > 0) {
     materials.push({
       num: num++,
       name: 'Кран спускной (дренажный) DN15',
-      chars: `Низ стояков`,
+      chars: `Низ стояков: ${riserPairs} пар × ${heatingZones} зон`,
       unit: 'шт',
       qty: drains,
       category: 'valve_thermo',
@@ -191,14 +315,14 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // Грунтовка и покраска стальных труб
-  // Расход грунтовки ~0.1 кг/м.п., краски ~0.15 кг/м.п. (зависит от диаметра)
+  // Грунтовка и покраска стальных труб (расход зависит от DN)
   if (totalRiserLen > 0) {
-    const primerKg = Math.ceil(totalRiserLen * 0.1);
+    const primerRate = getPrimerRate(riserDN);
+    const primerKg = Math.ceil(totalRiserLen * primerRate);
     materials.push({
       num: num++,
       name: 'Грунтовка ГФ-021 для стальных труб',
-      chars: `~0.1 кг/м.п. × ${totalRiserLen} м.п.`,
+      chars: `${primerRate} кг/м.п. (DN${riserDN}) × ${totalRiserLen} м.п.`,
       unit: 'кг',
       qty: primerKg,
       category: 'misc',
@@ -206,11 +330,12 @@ export function calculateProjectMaterials(state) {
       fixedPrice: 250,
       section: 'risers'
     });
-    const paintKg = Math.ceil(totalRiserLen * 0.15);
+    const paintRate = getPaintRate(riserDN);
+    const paintKg = Math.ceil(totalRiserLen * paintRate);
     materials.push({
       num: num++,
       name: 'Эмаль ПФ-115 для стальных труб',
-      chars: `~0.15 кг/м.п. × ${totalRiserLen} м.п.`,
+      chars: `${paintRate} кг/м.п. (DN${riserDN}) × ${totalRiserLen} м.п.`,
       unit: 'кг',
       qty: paintKg,
       category: 'misc',
@@ -221,21 +346,22 @@ export function calculateProjectMaterials(state) {
   }
 
   // Гильзы при проходе через перекрытие + противопожарная пена
-  const fireSleeves = riserPairs * 2 * heatingZones * numFloors;
-  if (fireSleeves > 0) {
+  if (totalFireSleeves > 0) {
+    const charsLines = zoneDetails.map(z =>
+      `Зона ${z.zoneNum}: ${z.sleevePerRiser} перекр. × 2 труб`
+    ).join('; ') + ` × ${riserPairs} пар`;
     materials.push({
       num: num++,
       name: `Гильза стальная проходная Ду${riserDN + 20}`,
-      chars: `Проход через перекрытия: ${riserPairs * 2 * heatingZones} стояков × ${numFloors} эт.`,
+      chars: charsLines,
       unit: 'шт',
-      qty: fireSleeves,
+      qty: totalFireSleeves,
       category: 'misc',
       priceKey: null,
       fixedPrice: 180,
       section: 'risers'
     });
-    // Пена противопожарная — 1 баллон на ~20 проходов
-    const foamCans = Math.ceil(fireSleeves / 20);
+    const foamCans = Math.ceil(totalFireSleeves / 20);
     materials.push({
       num: num++,
       name: 'Пена противопожарная монтажная',
@@ -608,19 +734,40 @@ export function calculateProjectMaterials(state) {
     });
   }
 
-  // --- Крепление стальных трубопроводов ---
-  // Хомуты + анкера + шпильки: ~1 комплект на 1.5 м стояка
-  const steelClamps = Math.round(totalRiserLen / 1.5);
-  if (steelClamps > 0) {
+  // --- Крепление стальных трубопроводов (раздельно) ---
+  const steelClampCount = Math.round(totalRiserLen / 1.5); // ~1 точка крепления на 1.5 м
+  if (steelClampCount > 0) {
     materials.push({
       num: num++,
-      name: 'Комплект крепления труб (хомут + анкер + шпилька)',
-      chars: `Стальные стояки, ~1 шт/1.5 м.п.`,
-      unit: 'компл.',
-      qty: steelClamps,
+      name: `Хомут трубный Ду${riserDN}`,
+      chars: `Стальные стояки, ~1 шт/1.5 м.п. × ${totalRiserLen} м.п.`,
+      unit: 'шт',
+      qty: steelClampCount,
       category: 'misc',
       priceKey: null,
-      fixedPrice: 120,
+      fixedPrice: 45,
+      section: 'additional'
+    });
+    materials.push({
+      num: num++,
+      name: 'Анкер забивной М8',
+      chars: `По 1 на каждый хомут`,
+      unit: 'шт',
+      qty: steelClampCount,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 15,
+      section: 'additional'
+    });
+    materials.push({
+      num: num++,
+      name: 'Шпилька М8×120',
+      chars: `По 1 на каждый хомут`,
+      unit: 'шт',
+      qty: steelClampCount,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 20,
       section: 'additional'
     });
   }
@@ -733,8 +880,15 @@ export function calculateWorkQuantities(state) {
 
   const heatPerRiser = riserPairs > 0 ? heatLoad_kW / (riserPairs * heatingZones) : 0;
   const riserDN = calcRiserDiameter(heatPerRiser, schedule, velocity);
+  const zoneBoundaries = state.zoneBoundaries || [];
+  const topFloor = getTopFloor(state);
+  const floorH_m = floorH / 1000;
 
-  const totalRiserLen = Math.round((floorH / 1000) * numFloors * riserPairs * 2 * heatingZones);
+  // Зональный расчёт длины стояков
+  const zoneData = calcZoneRiserLengths(zoneBoundaries, topFloor, floorH_m);
+  const pipesPerPair = 2; // подача + обратка
+  const riserLenPerPair = zoneData.reduce((s, z) => s + z.riserLength * pipesPerPair, 0);
+  const totalRiserLen = riserLenPerPair * riserPairs;
 
   // PEX длины
   let pexD16, pexD20, pexD25;
@@ -776,8 +930,8 @@ export function calculateWorkQuantities(state) {
     // Изоляция
     insulation_pe: insulLen,
     insulation_mw_110: insulLen,
-    // Компенсаторы
-    compensator: calcCompensators(numFloors) * riserPairs * 2 * heatingZones,
+    // Компенсаторы (по зонам, по СП 60.13330)
+    compensator: zoneData.reduce((s, z) => s + calcCompensatorsForRiser(z.riserLength, riserDN) * pipesPerPair, 0) * riserPairs,
     // Покраска
     painting: totalRiserLen,
     // ПНР
@@ -868,4 +1022,16 @@ function estimatePrice(name) {
 }
 
 // Экспорт для использования в UI
-export { calcRiserDiameter, calcCompensators, calcFixedSupports, getNumFloors };
+export {
+  calcRiserDiameter,
+  calcCompensators,
+  calcFixedSupports,
+  calcZoneRiserLengths,
+  calcCompensatorsForRiser,
+  calcFixedSupportsForRiser,
+  getMaxCompensatorSpacing,
+  getNumFloors,
+  getTopFloor,
+  getPrimerRate,
+  getPaintRate,
+};

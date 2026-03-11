@@ -2,7 +2,18 @@ import React from 'react';
 import StepCard from '../components/StepCard';
 import { useProject } from '../state/ProjectContext';
 import { fmt } from '../calc/heatCalc';
-import { calculateProjectMaterials, calcRiserDiameter, calcCompensators, calcFixedSupports, getNumFloors } from '../calc/materialCalc';
+import {
+  calculateProjectMaterials,
+  calcRiserDiameter,
+  calcZoneRiserLengths,
+  calcCompensatorsForRiser,
+  calcFixedSupportsForRiser,
+  getMaxCompensatorSpacing,
+  getNumFloors,
+  getTopFloor,
+  getPrimerRate,
+  getPaintRate,
+} from '../calc/materialCalc';
 
 // Цены PEX по производителям и диаметрам (руб/м.п.)
 const PEX_BRANDS = {
@@ -34,13 +45,35 @@ export default function Step7_Piping() {
   const floorH = state.floorHeight_mm || 3000;
   const roomsPerApt = state.roomsPerApartment || 2;
 
-  // === СТОЯКИ ===
+  // === СТОЯКИ (зональный расчёт) ===
   const heatPerRiser = riserPairs > 0 ? heatLoad_kW / (riserPairs * heatingZones) : 0;
   const riserDN = calcRiserDiameter(heatPerRiser, schedule, velocity);
-  const totalRiserLen = Math.round((floorH / 1000) * numFloors * riserPairs * 2 * heatingZones);
-  const compensators = calcCompensators(numFloors) * riserPairs * 2 * heatingZones;
-  const fixedSupports = calcFixedSupports(calcCompensators(numFloors)) * riserPairs * 2 * heatingZones;
-  const fireSleeves = riserPairs * 2 * heatingZones * numFloors;
+  const topFloor = getTopFloor(state);
+  const zoneBoundaries = state.zoneBoundaries || [];
+  const floorH_m = floorH / 1000;
+  const zoneData = calcZoneRiserLengths(zoneBoundaries, topFloor, floorH_m);
+  const pipesPerPair = 2; // подача + обратка
+  const maxSpacing = getMaxCompensatorSpacing(riserDN);
+
+  let riserLenPerPair = 0;
+  let compPerPairTotal = 0;
+  let fixedPerPairTotal = 0;
+  let sleevesPerPairTotal = 0;
+
+  zoneData.forEach(z => {
+    const comp = calcCompensatorsForRiser(z.riserLength, riserDN);
+    const fixed = calcFixedSupportsForRiser(comp);
+    const sleeves = Math.round(z.riserLength / floorH_m);
+    riserLenPerPair += z.riserLength * pipesPerPair;
+    compPerPairTotal += comp * pipesPerPair;
+    fixedPerPairTotal += fixed * pipesPerPair;
+    sleevesPerPairTotal += sleeves * pipesPerPair;
+  });
+
+  const totalRiserLen = riserLenPerPair * riserPairs;
+  const totalCompensators = compPerPairTotal * riserPairs;
+  const totalFixedSupports = fixedPerPairTotal * riserPairs;
+  const totalFireSleeves = sleevesPerPairTotal * riserPairs;
 
   // === PEX длины ===
   const overrides = state.pipeLenByDiam || {};
@@ -93,22 +126,75 @@ export default function Step7_Piping() {
       {/* === СЕКЦИЯ: СТОЯКИ === */}
       <h3 style={{ fontSize: '1rem', marginBottom: 12 }}>Стальные стояки</h3>
       <div className="info-box">
-        Диаметр стояка рассчитан по формуле: <code>d = 18.8 × √((0.86 × Q) / (ΔT × v))</code><br />
+        Диаметр стояка: <code>d = 18.8 × √((0.86 × Q) / (ΔT × v))</code><br />
         Q на стояк = <strong>{heatPerRiser.toFixed(1)} кВт</strong>,
-        v = <strong>{velocity} м/с</strong> → <strong>DN{riserDN}</strong>
+        v = <strong>{velocity} м/с</strong> → <strong>DN{riserDN}</strong><br />
+        Макс. расстояние между НО (СП 60.13330): <strong>{maxSpacing} м</strong> для DN{riserDN}
       </div>
+
+      {/* Детализация по зонам */}
+      {zoneData.length > 1 && (
+        <div className="info-box" style={{ marginTop: 8, fontSize: '0.85rem' }}>
+          <strong>Расчёт по зонам (каждый стояк идёт от подвала):</strong>
+          <table style={{ width: 'auto', marginTop: 6 }}>
+            <thead>
+              <tr>
+                <th>Зона</th>
+                <th>Этажи</th>
+                <th>Длина стояка</th>
+                <th>Комп./стояк</th>
+                <th>НО/стояк</th>
+                <th>Труб (подача+обратка)</th>
+                <th>На 1 пару</th>
+                <th>× {riserPairs} пар</th>
+              </tr>
+            </thead>
+            <tbody>
+              {zoneData.map((z, i) => {
+                const comp = calcCompensatorsForRiser(z.riserLength, riserDN);
+                const fixed = calcFixedSupportsForRiser(comp);
+                const prevTop = i === 0 ? 0 : zoneData[i - 1].topFloor;
+                return (
+                  <tr key={z.zoneNum}>
+                    <td>Зона {z.zoneNum}</td>
+                    <td>{prevTop + 1}–{z.topFloor} эт.</td>
+                    <td><strong>{z.riserLength} м</strong> (от подвала +1м)</td>
+                    <td>{comp} шт</td>
+                    <td>{fixed} шт</td>
+                    <td>2</td>
+                    <td><strong>{z.riserLength * 2} м</strong></td>
+                    <td><strong>{z.riserLength * 2 * riserPairs} м</strong></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div style={{ overflowX: 'auto' }}>
         <table>
           <thead><tr><th>Позиция</th><th>Характеристики</th><th>Кол-во</th></tr></thead>
           <tbody>
-            <tr><td>Стояки Ду{riserDN}</td><td>{riserPairs} пар × {numFloors} эт. × {(floorH / 1000).toFixed(1)}м × 2 × {heatingZones} зон</td><td><strong>{totalRiserLen} м.п.</strong></td></tr>
-            <tr><td>Компенсаторы Ду{riserDN}</td><td>Через каждые 4 этажа</td><td><strong>{compensators} шт</strong></td></tr>
-            <tr><td>Неподвижные опоры Ду{riserDN}</td><td>= компенсаторы + 1 на стояк</td><td><strong>{fixedSupports} шт</strong></td></tr>
-            <tr><td>Гильзы проходные</td><td>Проход через перекрытия</td><td><strong>{fireSleeves} шт</strong></td></tr>
-            <tr><td>Краны шаровые Ду{riserDN}</td><td>Верх + низ каждого стояка</td><td><strong>{riserPairs * 2 * 2 * heatingZones} шт</strong></td></tr>
-            <tr><td>Воздухоотводчики</td><td>Верх стояков</td><td><strong>{riserPairs * 2 * heatingZones} шт</strong></td></tr>
-            <tr><td>Спускники DN15</td><td>Низ стояков</td><td><strong>{riserPairs * 2 * heatingZones} шт</strong></td></tr>
+            <tr>
+              <td>Стояки Ду{riserDN}</td>
+              <td>{zoneData.map(z => `Зона ${z.zoneNum}: ${z.riserLength}м × 2`).join('; ')} × {riserPairs} пар</td>
+              <td><strong>{totalRiserLen} м.п.</strong></td>
+            </tr>
+            <tr>
+              <td>Компенсаторы Ду{riserDN}</td>
+              <td>По СП 60.13330, через каждые {maxSpacing} м</td>
+              <td><strong>{totalCompensators} шт</strong></td>
+            </tr>
+            <tr>
+              <td>Неподвижные опоры Ду{riserDN}</td>
+              <td>= компенсаторы + 1 на стояк (СП 60.13330)</td>
+              <td><strong>{totalFixedSupports} шт</strong></td>
+            </tr>
+            <tr><td>Гильзы проходные</td><td>Проход через перекрытия</td><td><strong>{totalFireSleeves} шт</strong></td></tr>
+            <tr><td>Краны шаровые Ду{riserDN}</td><td>2 × {riserPairs} пар × 2 (верх+низ) × {heatingZones} зон</td><td><strong>{pipesPerPair * riserPairs * 2 * heatingZones} шт</strong></td></tr>
+            <tr><td>Воздухоотводчики</td><td>Верх стояков: {riserPairs} пар × {heatingZones} зон</td><td><strong>{riserPairs * heatingZones} шт</strong></td></tr>
+            <tr><td>Спускники DN15</td><td>Низ стояков: {riserPairs} пар × {heatingZones} зон</td><td><strong>{riserPairs * heatingZones} шт</strong></td></tr>
           </tbody>
         </table>
       </div>
@@ -225,10 +311,12 @@ export default function Step7_Piping() {
             <tr><td>Хомуты крепления PEX к полу</td><td>~2 шт/м.п.</td><td><strong>{fmt(Math.round(totalPexLen * 2))} шт</strong></td></tr>
             <tr><td>Муфты соединительные PEX</td><td>Через каждые {state.pexBuhtaLength_m || 200} м бухты</td><td><strong>{Math.max(0, Math.floor(totalPexLen / (state.pexBuhtaLength_m || 200)))} шт</strong></td></tr>
             <tr><td>Гильзы напрессовочные ({(state.pressFittingMaterial || 'plastic') === 'metal' ? 'металл' : 'пластик'})</td><td>{nDevices} × 2 + муфты</td><td><strong>{nDevices * 2 + Math.max(0, Math.floor(totalPexLen / (state.pexBuhtaLength_m || 200)))} шт</strong></td></tr>
-            <tr><td>Комплект крепления стальных труб</td><td>~1 шт/1.5 м.п. стояка</td><td><strong>{Math.round(totalRiserLen / 1.5)} компл.</strong></td></tr>
-            <tr><td>Грунтовка ГФ-021</td><td>~0.1 кг/м.п. × {totalRiserLen} м.п.</td><td><strong>{Math.ceil(totalRiserLen * 0.1)} кг</strong></td></tr>
-            <tr><td>Эмаль ПФ-115</td><td>~0.15 кг/м.п. × {totalRiserLen} м.п.</td><td><strong>{Math.ceil(totalRiserLen * 0.15)} кг</strong></td></tr>
-            <tr><td>Гильзы проходные + пена п/п</td><td>Проход через перекрытия</td><td><strong>{fireSleeves} шт + {Math.ceil(fireSleeves / 20)} баллонов</strong></td></tr>
+            <tr><td>Хомут трубный Ду{riserDN}</td><td>~1 шт/1.5 м.п. стояка</td><td><strong>{Math.round(totalRiserLen / 1.5)} шт</strong></td></tr>
+            <tr><td>Анкер забивной М8</td><td>По 1 на хомут</td><td><strong>{Math.round(totalRiserLen / 1.5)} шт</strong></td></tr>
+            <tr><td>Шпилька М8×120</td><td>По 1 на хомут</td><td><strong>{Math.round(totalRiserLen / 1.5)} шт</strong></td></tr>
+            <tr><td>Грунтовка ГФ-021</td><td>{getPrimerRate(riserDN)} кг/м.п. (DN{riserDN}) × {totalRiserLen} м.п.</td><td><strong>{Math.ceil(totalRiserLen * getPrimerRate(riserDN))} кг</strong></td></tr>
+            <tr><td>Эмаль ПФ-115</td><td>{getPaintRate(riserDN)} кг/м.п. (DN{riserDN}) × {totalRiserLen} м.п.</td><td><strong>{Math.ceil(totalRiserLen * getPaintRate(riserDN))} кг</strong></td></tr>
+            <tr><td>Гильзы проходные + пена п/п</td><td>Проход через перекрытия</td><td><strong>{totalFireSleeves} шт + {Math.ceil(totalFireSleeves / 20)} баллонов</strong></td></tr>
           </tbody>
         </table>
       </div>

@@ -16,6 +16,9 @@ export default function Step1_InitialData() {
   const [routingType, setRoutingType] = useState(state.pexRoutingType || 'radial');
   const [roomsPerApt, setRoomsPerApt] = useState(state.roomsPerApartment || 2);
   const [aptsPerFloor, setAptsPerFloor] = useState(state.apartmentsPerFloor || '');
+  const [zoneBounds, setZoneBounds] = useState(
+    (state.zoneBoundaries || []).join(', ')
+  );
   const [projectLoaded, setProjectLoaded] = useState(false);
   const [selectedBldg, setSelectedBldg] = useState('');
 
@@ -58,6 +61,7 @@ export default function Step1_InitialData() {
     setRoutingType(routing);
     setRoomsPerApt(bldg.roomsPerApartment || 2);
     setAptsPerFloor(bldg.apartmentsPerFloor || '');
+    setZoneBounds((bldg.zoneBoundaries || []).join(', '));
     setSelectedBldg(buildingKey);
     setProjectLoaded(true);
 
@@ -86,6 +90,7 @@ export default function Step1_InitialData() {
         pexRoutingType: routing,
         roomsPerApartment: bldg.roomsPerApartment || 2,
         apartmentsPerFloor: bldg.apartmentsPerFloor || 0,
+        zoneBoundaries: bldg.zoneBoundaries || [],
       },
     });
   };
@@ -119,6 +124,9 @@ export default function Step1_InitialData() {
         pexRoutingType: routingType,
         roomsPerApartment: parseInt(roomsPerApt) || 2,
         apartmentsPerFloor: parseInt(aptsPerFloor) || 0,
+        zoneBoundaries: zoneBounds
+          ? zoneBounds.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0)
+          : [],
       },
     });
     dispatch({ type: 'NEXT_STEP' });
@@ -225,6 +233,11 @@ export default function Step1_InitialData() {
         <div className="form-group">
           <label>Квартир на этаже</label>
           <input type="number" min="1" value={aptsPerFloor} onChange={e => setAptsPerFloor(e.target.value)} placeholder="Авто" />
+        </div>
+        <div className="form-group">
+          <label>Границы зон (этажи через запятую)</label>
+          <input type="text" value={zoneBounds} onChange={e => setZoneBounds(e.target.value)}
+            placeholder="напр. 17 — зона 1 до 17 эт." />
         </div>
       </div>
 

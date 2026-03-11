@@ -21,6 +21,7 @@ const initialState = {
   pressFittingMaterial: 'plastic', // 'plastic' | 'metal'
   riserVelocity_ms: 0.7,      // скорость теплоносителя в стояке
   apartmentsPerFloor: 0,
+  zoneBoundaries: [],          // границы зон: [17] = зона 1 до 17 этажа, зона 2 до верха
 
   // Шаг 1
   windowCount: 0,
