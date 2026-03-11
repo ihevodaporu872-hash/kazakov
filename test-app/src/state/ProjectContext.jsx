@@ -14,6 +14,13 @@ const initialState = {
   heatingZones: 0,
   apartments: 0,
   area_m2: 0,
+  corridorLength_m: 0,
+  pexRoutingType: 'radial',   // 'radial' (лучевая) | 'series' (попутная)
+  roomsPerApartment: 2,
+  pexBuhtaLength_m: 200,      // длина бухты PEX
+  pressFittingMaterial: 'plastic', // 'plastic' | 'metal'
+  riserVelocity_ms: 0.7,      // скорость теплоносителя в стояке
+  apartmentsPerFloor: 0,
 
   // Шаг 1
   windowCount: 0,

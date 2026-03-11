@@ -12,6 +12,10 @@ export default function Step1_InitialData() {
   const [sh, setSh] = useState(state.screedHeight_mm || 100);
   const [schedule, setSchedule] = useState(state.schedule || '80/60');
   const [tIn, setTIn] = useState(state.tInside || 20);
+  const [corridorLen, setCorridorLen] = useState(state.corridorLength_m || '');
+  const [routingType, setRoutingType] = useState(state.pexRoutingType || 'radial');
+  const [roomsPerApt, setRoomsPerApt] = useState(state.roomsPerApartment || 2);
+  const [aptsPerFloor, setAptsPerFloor] = useState(state.apartmentsPerFloor || '');
   const [projectLoaded, setProjectLoaded] = useState(false);
   const [selectedBldg, setSelectedBldg] = useState('');
 
@@ -39,6 +43,10 @@ export default function Step1_InitialData() {
       }
     });
 
+    // Определяем тип разводки из проекта
+    const dist = (project.distribution || '').toLowerCase();
+    const routing = dist.includes('попутн') ? 'series' : 'radial';
+
     setCount(bldg.totalWindows);
     setLoad(bldg.heatLoad_kW);
     setUnit('kw');
@@ -46,6 +54,10 @@ export default function Step1_InitialData() {
     setSh(100);
     setSchedule(sched);
     setTIn(20);
+    setCorridorLen(bldg.corridorLength_m || '');
+    setRoutingType(routing);
+    setRoomsPerApt(bldg.roomsPerApartment || 2);
+    setAptsPerFloor(bldg.apartmentsPerFloor || '');
     setSelectedBldg(buildingKey);
     setProjectLoaded(true);
 
@@ -70,6 +82,10 @@ export default function Step1_InitialData() {
         tInside: 20,
         deltaT: dt,
         windows: allWindows,
+        corridorLength_m: bldg.corridorLength_m || 0,
+        pexRoutingType: routing,
+        roomsPerApartment: bldg.roomsPerApartment || 2,
+        apartmentsPerFloor: bldg.apartmentsPerFloor || 0,
       },
     });
   };
@@ -99,6 +115,10 @@ export default function Step1_InitialData() {
         tInside: parseInt(tIn),
         deltaT: dt,
         windows,
+        corridorLength_m: parseFloat(corridorLen) || 0,
+        pexRoutingType: routingType,
+        roomsPerApartment: parseInt(roomsPerApt) || 2,
+        apartmentsPerFloor: parseInt(aptsPerFloor) || 0,
       },
     });
     dispatch({ type: 'NEXT_STEP' });
@@ -137,6 +157,8 @@ export default function Step1_InitialData() {
                     <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Пар стояков (на этаж)</td><td><strong>{b.riserPairs}</strong></td></tr>
                     <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Выходов гребёнок (на этаж)</td><td><strong>{b.manifoldOutputs}</strong></td></tr>
                     <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Зон отопления</td><td><strong>{b.heatingZones}</strong></td></tr>
+                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Длина коридора</td><td><strong>{b.corridorLength_m || '—'} м</strong></td></tr>
+                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Комнат/квартиру (ср.)</td><td><strong>{b.roomsPerApartment || 2}</strong></td></tr>
                   </tbody>
                 </table>
               </div>
@@ -183,6 +205,29 @@ export default function Step1_InitialData() {
           <input type="number" value={tIn} onChange={e => setTIn(e.target.value)} />
         </div>
       </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Тип разводки PEX</label>
+          <select value={routingType} onChange={e => setRoutingType(e.target.value)}>
+            <option value="radial">Лучевая (через внутриквартирный коллектор)</option>
+            <option value="series">Попутная (через тройники)</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Длина коридора, м</label>
+          <input type="number" min="0" value={corridorLen} onChange={e => setCorridorLen(e.target.value)} placeholder="Авто" />
+        </div>
+        <div className="form-group">
+          <label>Ср. кол-во комнат/квартиру</label>
+          <input type="number" min="1" max="6" value={roomsPerApt} onChange={e => setRoomsPerApt(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label>Квартир на этаже</label>
+          <input type="number" min="1" value={aptsPerFloor} onChange={e => setAptsPerFloor(e.target.value)} placeholder="Авто" />
+        </div>
+      </div>
+
       <button className="btn btn-primary" onClick={handleNext}>Далее →</button>
     </StepCard>
   );

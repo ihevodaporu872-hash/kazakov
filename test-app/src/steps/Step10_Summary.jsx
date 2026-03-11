@@ -6,20 +6,22 @@ import { getWorkPrice } from '../calc/contractorPricing';
 import { calculateProjectMaterials, getMaterialPrice, calculateWorkQuantities } from '../calc/materialCalc';
 import { exportToExcel } from '../io/excelExport';
 
-// Связь работ и материалов
+// Связь работ и материалов (section-based для надёжности)
 const WORK_MATERIAL_MAP = {
-  pipe_steel_32:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('Ду32') },
-  pipe_steel_50:  { matFilter: m => m.category === 'pipe_steel' && m.name.includes('Ду50') },
-  pipe_pex_16:    { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d16') },
-  pipe_pex_20:    { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d20') },
-  pipe_pex_25:    { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d25') },
-  gofra:          { matFilter: m => m.name.includes('гофр') || m.name.includes('защитн') },
-  radiator_install: { matFilter: m => m.category === 'radiator_steel' || m.name.toLowerCase().includes('радиатор') },
-  register_install: { matFilter: m => m.category === 'convector_infloor' || m.name.toLowerCase().includes('конвектор') },
-  insulation_pe:  { matFilter: m => m.category === 'insulation' },
-  insulation_mw_110: { matFilter: m => m.category === 'insulation' },
-  collector:      { matFilter: m => m.name.includes('оллектор') || m.name.includes('ребёнк') },
-  bottom_conn:    { matFilter: m => m.name.toLowerCase().includes('термоголовк') || m.name.toLowerCase().includes('клапан термо') },
+  pipe_steel_32:    { matFilter: m => m.section === 'risers' && m.name.includes('Трубопровод стальной') },
+  pipe_steel_50:    { matFilter: m => m.section === 'risers' && m.name.includes('Трубопровод стальной') },
+  pipe_pex_16:      { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d16') },
+  pipe_pex_20:      { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d20') },
+  pipe_pex_25:      { matFilter: m => m.category === 'pipe_pex' && m.name.includes('d25') },
+  gofra:            { matFilter: m => m.name.includes('гофр') || m.name.includes('защитн') },
+  radiator_install: { matFilter: m => m.section === 'devices' && m.name.toLowerCase().includes('радиатор') },
+  register_install: { matFilter: m => m.section === 'devices' && m.name.toLowerCase().includes('конвектор') },
+  insulation_pe:    { matFilter: m => m.category === 'insulation' },
+  insulation_mw_110:{ matFilter: m => m.category === 'insulation' },
+  collector:        { matFilter: m => m.section === 'collectors' },
+  bottom_conn:      { matFilter: m => m.section === 'devices' && !m.name.toLowerCase().includes('радиатор') && !m.name.toLowerCase().includes('конвектор') },
+  compensator:      { matFilter: m => m.name.toLowerCase().includes('компенсатор') || m.name.toLowerCase().includes('неподвижн') },
+  painting:         { matFilter: m => m.name.toLowerCase().includes('грунтовк') || m.name.toLowerCase().includes('эмаль') },
 };
 
 export default function Step10_Summary() {

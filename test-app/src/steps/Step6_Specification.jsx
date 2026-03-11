@@ -9,7 +9,7 @@ export default function Step6_Specification() {
   useEffect(() => {
     if (state.currentStep < 6 || state.perWindow.length === 0) return;
     buildSpec();
-  }, [state.currentStep, state.perWindow, state.thermoHead, state.valve]);
+  }, [state.currentStep, state.perWindow, state.thermoHead, state.valve, state.deviceType]);
 
   const buildSpec = () => {
     const deviceGroups = {};
@@ -22,23 +22,53 @@ export default function Step6_Specification() {
     const specs = [];
     let num = 1;
 
+    // Приборы отопления
     for (const g of Object.values(deviceGroups)) {
       specs.push({ num: num++, name: g.name, chars: `Q=${fmt(g.power)} Вт при Δt=${state.deltaT.toFixed(0)}°C`, unit: 'шт', qty: g.count });
     }
 
+    // Термоголовка
     if (state.thermoHead && state.thermoHead !== 'none') {
       specs.push({ num: num++, name: `Термоголовка ${THERMO_LABELS[state.thermoHead]}`, chars: '', unit: 'шт', qty: state.windowCount });
     }
 
+    // Регулирующий клапан (если не в составе прибора)
     if (state.valve && state.valve !== 'included') {
       specs.push({ num: num++, name: `Клапан ${VALVE_LABELS[state.valve]}`, chars: 'DN15', unit: 'шт', qty: state.windowCount });
     }
 
+    // ========================================
+    // Узел подключения прибора (по типу)
+    // ========================================
+
+    if (state.deviceType === 'inFloor') {
+      // Внутрипольные: RLV + RA-N + переход на PEX Ду16
+      specs.push({ num: num++, name: 'Клапан RLV', chars: 'DN15, в составе узла подключения', unit: 'шт', qty: state.windowCount });
+      specs.push({ num: num++, name: 'Клапан RA-N', chars: 'DN15, термостатический', unit: 'шт', qty: state.windowCount });
+      specs.push({ num: num++, name: 'Переход RLV/RA-N → PEX Ду16', chars: '', unit: 'компл.', qty: state.windowCount });
+
+    } else if (state.deviceType === 'floor') {
+      // Напольные: RLV-K + 2 ниппеля + 2 евроконуса + 2 L-образные трубки
+      specs.push({ num: num++, name: 'Клапан RLV-K', chars: 'DN15, нижнее подключение', unit: 'шт', qty: state.windowCount });
+      specs.push({ num: num++, name: 'Ниппель', chars: 'G1/2"', unit: 'шт', qty: state.windowCount * 2 });
+      specs.push({ num: num++, name: 'Евроконус', chars: 'G1/2" × PEX Ду16', unit: 'шт', qty: state.windowCount * 2 });
+      specs.push({ num: num++, name: 'L-образная трубка', chars: 'Для подключения напольного прибора', unit: 'шт', qty: state.windowCount * 2 });
+
+    } else {
+      // Настенные — зависит от комплектации, по умолчанию вариант 2 (RLV-K)
+      specs.push({ num: num++, name: 'Клапан RLV-K', chars: 'DN15, нижнее подключение', unit: 'шт', qty: state.windowCount });
+      specs.push({ num: num++, name: 'Ниппель', chars: 'G1/2"', unit: 'шт', qty: state.windowCount * 2 });
+      specs.push({ num: num++, name: 'Евроконус', chars: 'G1/2" × PEX Ду16', unit: 'шт', qty: state.windowCount * 2 });
+      specs.push({ num: num++, name: 'L-образная трубка', chars: 'Для подключения настенного прибора', unit: 'шт', qty: state.windowCount * 2 });
+    }
+
+    // Воздухоотводчик
     specs.push({ num: num++, name: 'Воздухоотводчик (кран Маевского)', chars: 'DN15', unit: 'шт', qty: state.windowCount });
 
+    // Кронштейны
     if (state.deviceType !== 'inFloor') {
       const bPerRad = state.deviceType === 'wall' ? 3 : 2;
-      specs.push({ num: num++, name: 'Кронштейн крепления радиатора', chars: '', unit: 'шт', qty: state.windowCount * bPerRad });
+      specs.push({ num: num++, name: 'Кронштейн крепления радиатора', chars: state.deviceType === 'wall' ? 'Настенное крепление' : 'Напольное крепление', unit: 'шт', qty: state.windowCount * bPerRad });
     }
 
     dispatch({ type: 'SET', payload: { specData: specs } });
@@ -96,7 +126,7 @@ export default function Step6_Specification() {
       </div>
 
       <div className="export-bar">
-        <button className="btn btn-primary" onClick={() => dispatch({ type: 'NEXT_STEP' })}>Далее: трубы и стоимость →</button>
+        <button className="btn btn-primary" onClick={() => dispatch({ type: 'NEXT_STEP' })}>Далее: трубы и материалы →</button>
       </div>
     </StepCard>
   );

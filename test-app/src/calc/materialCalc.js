@@ -1,5 +1,55 @@
+// =====================================================================
 // Расчёт материалов на основе параметров проекта
-// Входные данные: state с параметрами из project_308.json
+// Логика по диаграмме: блоки 5–8 (стояки, PEX, коллекторы, доп. материалы)
+// =====================================================================
+
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+
+function getNumFloors(state) {
+  if (state.projectData && state.selectedBuilding) {
+    const bldg = state.projectData.buildings[state.selectedBuilding];
+    if (bldg && bldg.floors) {
+      const m = bldg.floors.match(/(\d+)-(\d+)/);
+      if (m) return parseInt(m[2]) - parseInt(m[1]) + 1;
+    }
+  }
+  return 16;
+}
+
+// Подбор диаметра стояка по формуле:
+// d = 18.8 * sqrt((0.86 * Q) / (dT * v))
+// Q — тепловая нагрузка на стояк, кВт
+// dT — разница температур подачи/обратки, °C
+// v — скорость теплоносителя, м/с
+// Результат в мм → округляем до стандартного DN
+function calcRiserDiameter(heatLoad_kW, schedule, velocity_ms) {
+  const [ts, tr] = schedule.split('/').map(Number);
+  const dT = ts - tr; // разница подачи и обратки
+  const v = velocity_ms || 0.7;
+  if (dT <= 0 || heatLoad_kW <= 0) return 32;
+
+  const d_mm = 18.8 * Math.sqrt((0.86 * heatLoad_kW) / (dT * v));
+  // Стандартные DN: 15, 20, 25, 32, 40, 50, 65, 80, 100
+  const STD_DN = [15, 20, 25, 32, 40, 50, 65, 80, 100];
+  for (const dn of STD_DN) {
+    if (dn >= d_mm) return dn;
+  }
+  return STD_DN[STD_DN.length - 1];
+}
+
+// Расчёт компенсаторов: 1 на каждые 4 этажа
+function calcCompensators(numFloors) {
+  return Math.max(0, Math.ceil(numFloors / 4) - 1);
+}
+
+// Неподвижные опоры = компенсаторы + 1
+function calcFixedSupports(compensators) {
+  return compensators > 0 ? compensators + 1 : 0;
+}
+
+// =====================================================================
+// ОСНОВНОЙ РАСЧЁТ МАТЕРИАЛОВ
+// =====================================================================
 
 export function calculateProjectMaterials(state) {
   const materials = [];
@@ -12,178 +62,105 @@ export function calculateProjectMaterials(state) {
   const heatingZones = state.heatingZones || 1;
   const apartments = state.apartments || 0;
   const insulThick = state.insulationThickness_mm || 13;
+  const numFloors = getNumFloors(state);
+  const corridorLen = state.corridorLength_m || 0;
+  const routingType = state.pexRoutingType || 'radial';
+  const roomsPerApt = state.roomsPerApartment || 2;
+  const aptsPerFloor = state.apartmentsPerFloor || Math.ceil(apartments / numFloors);
+  const buhtaLen = state.pexBuhtaLength_m || 200;
+  const pressMaterial = state.pressFittingMaterial || 'plastic';
+  const velocity = state.riserVelocity_ms || 0.7;
+  const schedule = state.schedule || '80/60';
+  const heatLoad_kW = (state.heatLoad_W || 0) / 1000;
 
-  // Определяем кол-во этажей из строки floors (напр. "2-17")
-  let numFloors = 16;
-  if (state.projectData && state.selectedBuilding) {
-    const bldg = state.projectData.buildings[state.selectedBuilding];
-    if (bldg && bldg.floors) {
-      const m = bldg.floors.match(/(\d+)-(\d+)/);
-      if (m) numFloors = parseInt(m[2]) - parseInt(m[1]) + 1;
-    }
-  }
+  // ================================================================
+  // БЛОК 5: СТАЛЬНЫЕ ТРУБОПРОВОДЫ (СТОЯКИ)
+  // ================================================================
 
-  // === ТРУБОПРОВОДЫ СТАЛЬНЫЕ ===
+  // Диаметр стояка — рассчитываем по формуле
+  const heatPerRiser = riserPairs > 0 ? heatLoad_kW / (riserPairs * heatingZones) : 0;
+  const riserDN = calcRiserDiameter(heatPerRiser, schedule, velocity);
 
-  // 1. Стояки отопления (стальные) — пара стояков: подача + обратка
+  // Длина стояков: пар стояков × этажей × высота этажа × 2 (подача + обратка)
   const riserLen_per = (floorH / 1000) * numFloors;
-  const totalRiserLen = riserLen_per * riserPairs * 2;
+  const totalRiserLen = Math.round(riserLen_per * riserPairs * 2 * heatingZones);
   if (totalRiserLen > 0) {
     materials.push({
       num: num++,
-      name: 'Трубопровод стальной стояков отопления Ду32',
-      chars: `${riserPairs} пар × ${numFloors} эт. × ${(floorH/1000).toFixed(1)}м × 2 (подача+обратка)`,
+      name: `Трубопровод стальной стояков отопления Ду${riserDN}`,
+      chars: `${riserPairs} пар × ${numFloors} эт. × ${(floorH / 1000).toFixed(1)}м × 2 × ${heatingZones} зон`,
       unit: 'м.п.',
-      qty: Math.round(totalRiserLen),
+      qty: totalRiserLen,
       category: 'pipe_steel',
-      priceKey: 'Трубопровод_Сталь_ВГП_DN32'
+      priceKey: `Трубопровод_Сталь_ВГП_DN${riserDN >= 50 ? riserDN : 32}`,
+      section: 'risers'
     });
   }
 
-  // 2. Магистральные трубопроводы стальные (горизонтальная разводка)
-  const mainPipeLen = Math.round(apartments * 6);
-  if (mainPipeLen > 0) {
+  // Компенсаторы — через каждые 4 этажа на каждый стояк
+  const compensatorsPerRiser = calcCompensators(numFloors);
+  const totalCompensators = compensatorsPerRiser * riserPairs * 2 * heatingZones;
+  if (totalCompensators > 0) {
     materials.push({
       num: num++,
-      name: 'Трубопровод стальной магистральный Ду50',
-      chars: `Магистральная разводка, ~6 м.п./квартиру`,
-      unit: 'м.п.',
-      qty: mainPipeLen,
-      category: 'pipe_steel',
-      priceKey: 'Трубопровод_Сталь_ВГП_DN50'
-    });
-  }
-
-  // === ТРУБОПРОВОДЫ PEX (по диаметрам) ===
-  const overrides = state.pipeLenByDiam || {};
-
-  // d16 — подводки к приборам (~1.5 м.п. на прибор)
-  const pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 1.5);
-  if (pexD16 > 0) {
-    materials.push({
-      num: num++,
-      name: 'Труба PEX d16',
-      chars: `Подводка к приборам, ${windowCount} × 1.5 м.п.`,
-      unit: 'м.п.',
-      qty: pexD16,
-      category: 'pipe_pex',
-      priceKey: 'Трубопровод_PEX_16мм'
-    });
-  }
-
-  // d20 — разводка от гребёнки (~2 м.п. на прибор)
-  const pexD20 = overrides[20] != null ? overrides[20] : Math.round(windowCount * 2.0);
-  if (pexD20 > 0) {
-    materials.push({
-      num: num++,
-      name: 'Труба PEX d20',
-      chars: `Разводка от гребёнки, ${windowCount} × 2.0 м.п.`,
-      unit: 'м.п.',
-      qty: pexD20,
-      category: 'pipe_pex',
-      priceKey: 'Трубопровод_PEX_20мм'
-    });
-  }
-
-  // d25 — магистраль этажная
-  const pexD25 = overrides[25] != null ? overrides[25] : Math.round(manifoldOutputs * numFloors * 3);
-  if (pexD25 > 0) {
-    materials.push({
-      num: num++,
-      name: 'Труба PEX d25',
-      chars: `Магистраль этажная, ${manifoldOutputs} вых. × ${numFloors} эт. × 3 м`,
-      unit: 'м.п.',
-      qty: pexD25,
-      category: 'pipe_pex',
-      priceKey: 'Трубопровод_PEX_25мм'
-    });
-  }
-
-  // Труба защитная гофрированная (для всех PEX)
-  const totalPexLen = pexD16 + pexD20 + pexD25;
-  if (totalPexLen > 0) {
-    materials.push({
-      num: num++,
-      name: 'Труба защитная гофрированная',
-      chars: `Для PEX-разводки`,
-      unit: 'м.п.',
-      qty: totalPexLen,
-      category: 'misc',
-      priceKey: null,
-      fixedPrice: 60
-    });
-  }
-
-  // === ГРЕБЁНКИ / КОЛЛЕКТОРЫ ===
-  const totalManifolds = manifoldOutputs * numFloors;
-  if (totalManifolds > 0) {
-    materials.push({
-      num: num++,
-      name: 'Коллектор (гребёнка) поэтажный',
-      chars: `${manifoldOutputs} вых./этаж × ${numFloors} эт.`,
+      name: `Компенсатор сильфонный осевой Ду${riserDN}`,
+      chars: `${compensatorsPerRiser} шт./стояк × ${riserPairs * 2 * heatingZones} стояков (через каждые 4 этажа)`,
       unit: 'шт',
-      qty: totalManifolds,
-      category: 'valve_thermo',
+      qty: totalCompensators,
+      category: 'pipe_steel',
+      priceKey: `Компенсатор_Ду${riserDN >= 50 ? riserDN : 32}`,
+      section: 'risers'
+    });
+  }
+
+  // Неподвижные опоры = компенсаторы + 1 на стояк
+  const fixedSupportsPerRiser = calcFixedSupports(compensatorsPerRiser);
+  const totalFixedSupports = fixedSupportsPerRiser * riserPairs * 2 * heatingZones;
+  if (totalFixedSupports > 0) {
+    materials.push({
+      num: num++,
+      name: `Неподвижная опора (НО) Ду${riserDN}`,
+      chars: `${fixedSupportsPerRiser} шт./стояк (= компенсаторы + 1)`,
+      unit: 'шт',
+      qty: totalFixedSupports,
+      category: 'pipe_steel',
       priceKey: null,
-      fixedPrice: 3500
+      fixedPrice: 800,
+      section: 'risers'
     });
   }
 
-  // === ПРИБОРЫ ОТОПЛЕНИЯ (из спецификации) ===
-  (state.specData || []).forEach(spec => {
-    materials.push({
-      num: num++,
-      name: spec.name,
-      chars: spec.chars,
-      unit: spec.unit,
-      qty: spec.qty,
-      category: getCategoryForSpec(spec.name),
-      priceKey: getPriceKeyForSpec(spec.name),
-      fixedPrice: estimatePrice(spec.name)
-    });
-  });
-
-  // === ТЕПЛОИЗОЛЯЦИЯ ===
-  const insulLen = totalRiserLen + mainPipeLen;
-  if (insulLen > 0) {
-    materials.push({
-      num: num++,
-      name: `Теплоизоляция ВПЭ ${insulThick}мм`,
-      chars: `Стояки + магистрали: ${Math.round(totalRiserLen)} + ${mainPipeLen} м.п.`,
-      unit: 'м.п.',
-      qty: Math.round(insulLen),
-      category: 'insulation',
-      priceKey: insulThick <= 9 ? 'Теплоизоляция_ВПЭ_9мм_d28-35' : 'Теплоизоляция_ВПЭ_13мм_d15-22'
-    });
-  }
-
-  // === АРМАТУРА ===
+  // Краны шаровые на стояках (по 2 на каждый стояк: верх + низ)
   const ballValves = riserPairs * 2 * 2 * heatingZones;
   if (ballValves > 0) {
     materials.push({
       num: num++,
-      name: 'Кран шаровой Ду32',
+      name: `Кран шаровой Ду${riserDN}`,
       chars: `На стояках: ${riserPairs} пар × 2 × 2 × ${heatingZones} зон`,
       unit: 'шт',
       qty: ballValves,
       category: 'valve_thermo',
-      priceKey: 'Кран_шаровой_DN25-32'
+      priceKey: `Кран_шаровой_DN${riserDN >= 32 ? '25-32' : '15-20'}`,
+      section: 'risers'
     });
   }
 
+  // Балансировочные клапаны на стояках
   const balanceValves = riserPairs * 2 * heatingZones;
   if (balanceValves > 0) {
     materials.push({
       num: num++,
-      name: 'Клапан балансировочный Ду32',
+      name: `Клапан балансировочный Ду${riserDN}`,
       chars: `На стояках`,
       unit: 'шт',
       qty: balanceValves,
       category: 'valve_thermo',
-      priceKey: 'Клапан_балансировочный_DN32-50'
+      priceKey: 'Клапан_балансировочный_DN32-50',
+      section: 'risers'
     });
   }
 
+  // Воздухоотводчики — в верхних точках каждого стояка
   const airVents = riserPairs * 2 * heatingZones;
   if (airVents > 0) {
     materials.push({
@@ -193,20 +170,508 @@ export function calculateProjectMaterials(state) {
       unit: 'шт',
       qty: airVents,
       category: 'valve_thermo',
-      priceKey: 'Воздухоотводчик_авто'
+      priceKey: 'Воздухоотводчик_авто',
+      section: 'risers'
     });
   }
 
-  // === ПНР ===
-  const totalPipeLen = totalRiserLen + mainPipeLen + totalPexLen;
+  // Спускники — в нижних точках каждого стояка
+  const drains = riserPairs * 2 * heatingZones;
+  if (drains > 0) {
+    materials.push({
+      num: num++,
+      name: 'Кран спускной (дренажный) DN15',
+      chars: `Низ стояков`,
+      unit: 'шт',
+      qty: drains,
+      category: 'valve_thermo',
+      priceKey: null,
+      fixedPrice: 350,
+      section: 'risers'
+    });
+  }
+
+  // Грунтовка и покраска стальных труб
+  // Расход грунтовки ~0.1 кг/м.п., краски ~0.15 кг/м.п. (зависит от диаметра)
+  if (totalRiserLen > 0) {
+    const primerKg = Math.ceil(totalRiserLen * 0.1);
+    materials.push({
+      num: num++,
+      name: 'Грунтовка ГФ-021 для стальных труб',
+      chars: `~0.1 кг/м.п. × ${totalRiserLen} м.п.`,
+      unit: 'кг',
+      qty: primerKg,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 250,
+      section: 'risers'
+    });
+    const paintKg = Math.ceil(totalRiserLen * 0.15);
+    materials.push({
+      num: num++,
+      name: 'Эмаль ПФ-115 для стальных труб',
+      chars: `~0.15 кг/м.п. × ${totalRiserLen} м.п.`,
+      unit: 'кг',
+      qty: paintKg,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 300,
+      section: 'risers'
+    });
+  }
+
+  // Гильзы при проходе через перекрытие + противопожарная пена
+  const fireSleeves = riserPairs * 2 * heatingZones * numFloors;
+  if (fireSleeves > 0) {
+    materials.push({
+      num: num++,
+      name: `Гильза стальная проходная Ду${riserDN + 20}`,
+      chars: `Проход через перекрытия: ${riserPairs * 2 * heatingZones} стояков × ${numFloors} эт.`,
+      unit: 'шт',
+      qty: fireSleeves,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 180,
+      section: 'risers'
+    });
+    // Пена противопожарная — 1 баллон на ~20 проходов
+    const foamCans = Math.ceil(fireSleeves / 20);
+    materials.push({
+      num: num++,
+      name: 'Пена противопожарная монтажная',
+      chars: `~1 баллон на 20 проходов`,
+      unit: 'шт',
+      qty: foamCans,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 800,
+      section: 'risers'
+    });
+  }
+
+  // ================================================================
+  // БЛОК 6: ЭТАЖНЫЕ КОЛЛЕКТОРЫ (ГРЕБЁНКИ)
+  // ================================================================
+
+  // К каждому коллектору: 2 крана + 2 тройника
+  const totalManifolds = manifoldOutputs * numFloors;
+  if (totalManifolds > 0) {
+    // Определяем диаметр коллектора по кол-ву отводов
+    const manifoldDN = manifoldOutputs <= 4 ? 32 : manifoldOutputs <= 8 ? 40 : 50;
+    materials.push({
+      num: num++,
+      name: `Коллектор (гребёнка) поэтажный ${manifoldOutputs} отв.`,
+      chars: `${manifoldOutputs} отв./этаж × ${numFloors} эт., DN${manifoldDN}`,
+      unit: 'компл.',
+      qty: totalManifolds,
+      category: 'valve_thermo',
+      priceKey: null,
+      fixedPrice: 3500,
+      section: 'collectors'
+    });
+
+    // 2 крана на каждый коллектор
+    materials.push({
+      num: num++,
+      name: `Кран шаровой Ду${manifoldDN} (на коллектор)`,
+      chars: `2 шт. × ${totalManifolds} коллекторов`,
+      unit: 'шт',
+      qty: totalManifolds * 2,
+      category: 'valve_thermo',
+      priceKey: `Кран_шаровой_DN25-32`,
+      section: 'collectors'
+    });
+
+    // 2 тройника на каждый коллектор
+    materials.push({
+      num: num++,
+      name: `Тройник стальной Ду${manifoldDN}`,
+      chars: `2 шт. × ${totalManifolds} коллекторов`,
+      unit: 'шт',
+      qty: totalManifolds * 2,
+      category: 'pipe_steel',
+      priceKey: null,
+      fixedPrice: 250,
+      section: 'collectors'
+    });
+  }
+
+  // Присоединительные фитинги к PEX Ду20 (на коллекторах)
+  const connFittings = totalManifolds * manifoldOutputs * 2; // подача + обратка
+  if (connFittings > 0) {
+    materials.push({
+      num: num++,
+      name: 'Фитинг присоединительный PEX Ду20 (на коллектор)',
+      chars: `${manifoldOutputs} отв. × 2 (под./обр.) × ${totalManifolds} коллекторов`,
+      unit: 'шт',
+      qty: connFittings,
+      category: 'pipe_pex',
+      priceKey: null,
+      fixedPrice: 120,
+      section: 'collectors'
+    });
+  }
+
+  // ================================================================
+  // БЛОК 7: ГОРИЗОНТАЛЬНАЯ РАЗВОДКА PEX
+  // ================================================================
+
+  const overrides = state.pipeLenByDiam || {};
+
+  if (routingType === 'radial') {
+    // ---- ЛУЧЕВАЯ РАЗВОДКА (через внутриквартирные коллекторы) ----
+
+    // Внутриквартирные коллекторы
+    // Кол-во отводов в квартире = кол-во комнат + 1 (кухня)
+    const outputsPerApt = roomsPerApt + 1;
+    if (apartments > 0) {
+      materials.push({
+        num: num++,
+        name: `Коллектор внутриквартирный ${outputsPerApt} отв.`,
+        chars: `${apartments} квартир × (${roomsPerApt} комнат + 1 кухня), 2 шт/кв. (подача+обратка)`,
+        unit: 'компл.',
+        qty: apartments * 2,
+        category: 'valve_thermo',
+        priceKey: null,
+        fixedPrice: 2500,
+        section: 'pex'
+      });
+
+      // Фитинги перехода PEX → коллектор
+      const pexToCollFittings = apartments * outputsPerApt * 2;
+      materials.push({
+        num: num++,
+        name: 'Фитинг перехода PEX на коллектор (евроконус)',
+        chars: `${apartments} кв. × ${outputsPerApt} отв. × 2`,
+        unit: 'шт',
+        qty: pexToCollFittings,
+        category: 'pipe_pex',
+        priceKey: null,
+        fixedPrice: 90,
+        section: 'pex'
+      });
+    }
+
+    // PEX d16 — от квартирного коллектора к приборам (~3 м/прибор)
+    const pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 3);
+    if (pexD16 > 0) {
+      materials.push({
+        num: num++,
+        name: 'Труба PEX d16',
+        chars: `Подводка к приборам (лучевая), ${windowCount} приб. × ~3 м`,
+        unit: 'м.п.',
+        qty: pexD16,
+        category: 'pipe_pex',
+        priceKey: 'Трубопровод_PEX_16мм',
+        section: 'pex'
+      });
+    }
+
+    // PEX d20 — от этажного коллектора до квартирного (~5 м/квартиру)
+    const pexD20 = overrides[20] != null ? overrides[20] : Math.round(apartments * 5);
+    if (pexD20 > 0) {
+      materials.push({
+        num: num++,
+        name: 'Труба PEX d20',
+        chars: `От этажного колл. до квартирного, ${apartments} кв. × ~5 м`,
+        unit: 'м.п.',
+        qty: pexD20,
+        category: 'pipe_pex',
+        priceKey: 'Трубопровод_PEX_20мм',
+        section: 'pex'
+      });
+    }
+
+    // PEX d25 — магистраль этажная (коридор)
+    const pexD25 = overrides[25] != null ? overrides[25]
+      : Math.round(corridorLen > 0 ? corridorLen * numFloors * 2 : manifoldOutputs * numFloors * 3);
+    if (pexD25 > 0) {
+      materials.push({
+        num: num++,
+        name: 'Труба PEX d25',
+        chars: corridorLen > 0
+          ? `Магистраль этажная: ${corridorLen} м × ${numFloors} эт. × 2`
+          : `Магистраль: ${manifoldOutputs} вых. × ${numFloors} эт. × 3 м`,
+        unit: 'м.п.',
+        qty: pexD25,
+        category: 'pipe_pex',
+        priceKey: 'Трубопровод_PEX_25мм',
+        section: 'pex'
+      });
+    }
+
+    var totalPexLen = (pexD16 || 0) + (pexD20 || 0) + (pexD25 || 0);
+
+  } else {
+    // ---- ПОПУТНАЯ РАЗВОДКА (через тройники) ----
+
+    // Тройники: (кол-во приборов − кол-во квартир) × 2
+    const teeCount = Math.max(0, (windowCount - apartments)) * 2;
+    if (teeCount > 0) {
+      // Диаметры: 1-й 25-16-20, 2-й 20-16-16, остальные 16-16-16
+      const tee25 = Math.min(apartments * 2, teeCount); // по 2 на квартиру (подача+обратка), макс. тройников
+      const tee20 = Math.min(apartments * 2, Math.max(0, teeCount - tee25));
+      const tee16 = Math.max(0, teeCount - tee25 - tee20);
+
+      if (tee25 > 0) {
+        materials.push({
+          num: num++,
+          name: 'Тройник PEX 25×16×20',
+          chars: `1-й тройник от магистрали (подача+обратка)`,
+          unit: 'шт',
+          qty: tee25,
+          category: 'pipe_pex',
+          priceKey: null,
+          fixedPrice: 280,
+          section: 'pex'
+        });
+      }
+      if (tee20 > 0) {
+        materials.push({
+          num: num++,
+          name: 'Тройник PEX 20×16×16',
+          chars: `2-й тройник`,
+          unit: 'шт',
+          qty: tee20,
+          category: 'pipe_pex',
+          priceKey: null,
+          fixedPrice: 220,
+          section: 'pex'
+        });
+      }
+      if (tee16 > 0) {
+        materials.push({
+          num: num++,
+          name: 'Тройник PEX 16×16×16',
+          chars: `Остальные тройники`,
+          unit: 'шт',
+          qty: tee16,
+          category: 'pipe_pex',
+          priceKey: null,
+          fixedPrice: 180,
+          section: 'pex'
+        });
+      }
+    }
+
+    // PEX d16 — подводки к приборам (~1.5 м/прибор)
+    const pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 1.5);
+    if (pexD16 > 0) {
+      materials.push({
+        num: num++,
+        name: 'Труба PEX d16',
+        chars: `Подводка к приборам (попутная), ${windowCount} × 1.5 м`,
+        unit: 'м.п.',
+        qty: pexD16,
+        category: 'pipe_pex',
+        priceKey: 'Трубопровод_PEX_16мм',
+        section: 'pex'
+      });
+    }
+
+    // PEX d20 — разводка между приборами (~2 м/прибор)
+    const pexD20 = overrides[20] != null ? overrides[20] : Math.round(windowCount * 2.0);
+    if (pexD20 > 0) {
+      materials.push({
+        num: num++,
+        name: 'Труба PEX d20',
+        chars: `Разводка между приборами, ${windowCount} × 2.0 м`,
+        unit: 'м.п.',
+        qty: pexD20,
+        category: 'pipe_pex',
+        priceKey: 'Трубопровод_PEX_20мм',
+        section: 'pex'
+      });
+    }
+
+    // PEX d25 — магистраль
+    const pexD25 = overrides[25] != null ? overrides[25]
+      : Math.round(corridorLen > 0 ? corridorLen * numFloors * 2 : manifoldOutputs * numFloors * 3);
+    if (pexD25 > 0) {
+      materials.push({
+        num: num++,
+        name: 'Труба PEX d25',
+        chars: corridorLen > 0
+          ? `Магистраль: ${corridorLen} м × ${numFloors} эт. × 2`
+          : `Магистраль: ${manifoldOutputs} вых. × ${numFloors} эт. × 3 м`,
+        unit: 'м.п.',
+        qty: pexD25,
+        category: 'pipe_pex',
+        priceKey: 'Трубопровод_PEX_25мм',
+        section: 'pex'
+      });
+    }
+
+    var totalPexLen = (pexD16 || 0) + (pexD20 || 0) + (pexD25 || 0);
+  }
+
+  // ================================================================
+  // БЛОК 8: ДОПОЛНИТЕЛЬНЫЕ МАТЕРИАЛЫ
+  // ================================================================
+
+  // --- Гофра для PEX внутри квартир ---
+  // Примерно 60% от общей длины PEX идёт внутри квартиры
+  const gofraPexLen = Math.round(totalPexLen * 0.6);
+  if (gofraPexLen > 0) {
+    materials.push({
+      num: num++,
+      name: 'Труба защитная гофрированная (для PEX внутри квартир)',
+      chars: `~60% от общей длины PEX`,
+      unit: 'м.п.',
+      qty: gofraPexLen,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 60,
+      section: 'additional'
+    });
+  }
+
+  // --- Теплоизоляция для PEX в межквартирном пространстве ---
+  // ~40% от общей длины PEX
+  const insulPexLen = Math.round(totalPexLen * 0.4);
+  if (insulPexLen > 0) {
+    materials.push({
+      num: num++,
+      name: `Теплоизоляция ВПЭ ${insulThick}мм (для PEX в коридорах)`,
+      chars: `~40% от общей длины PEX`,
+      unit: 'м.п.',
+      qty: insulPexLen,
+      category: 'insulation',
+      priceKey: insulThick <= 9 ? 'Теплоизоляция_ВПЭ_9мм_d15-22' : 'Теплоизоляция_ВПЭ_13мм_d15-22',
+      section: 'additional'
+    });
+  }
+
+  // --- Теплоизоляция стояков ---
+  if (totalRiserLen > 0) {
+    materials.push({
+      num: num++,
+      name: `Теплоизоляция ВПЭ ${insulThick}мм (стояки)`,
+      chars: `Стояки: ${totalRiserLen} м.п.`,
+      unit: 'м.п.',
+      qty: totalRiserLen,
+      category: 'insulation',
+      priceKey: insulThick <= 9 ? 'Теплоизоляция_ВПЭ_9мм_d28-35' : 'Теплоизоляция_ВПЭ_13мм_d28-35',
+      section: 'additional'
+    });
+  }
+
+  // --- Хомуты (крюки) для крепления PEX к полу ---
+  // ~1 хомут на 0.5 м PEX
+  const pexClamps = Math.round(totalPexLen * 2);
+  if (pexClamps > 0) {
+    materials.push({
+      num: num++,
+      name: 'Хомут (крюк) для крепления PEX к полу',
+      chars: `~2 шт/м.п.`,
+      unit: 'шт',
+      qty: pexClamps,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 8,
+      section: 'additional'
+    });
+  }
+
+  // --- Соединительные муфты PEX (через каждую бухту) ---
+  // Кол-во муфт = суммарная длина / длина бухты (округляем вниз, -1 т.к. первая без муфты)
+  const pexCouplings = Math.max(0, Math.floor(totalPexLen / buhtaLen));
+  if (pexCouplings > 0) {
+    materials.push({
+      num: num++,
+      name: 'Муфта соединительная PEX (равного диаметра)',
+      chars: `Через каждые ${buhtaLen} м бухты`,
+      unit: 'шт',
+      qty: pexCouplings,
+      category: 'pipe_pex',
+      priceKey: null,
+      fixedPrice: 150,
+      section: 'additional'
+    });
+  }
+
+  // --- Напрессовочные гильзы PEX ---
+  // На каждое соединение PEX — 2 гильзы (вход + выход)
+  // Кол-во соединений ≈ windowCount × 2 (подача + обратка) + муфты
+  const pressConnections = windowCount * 2 + pexCouplings;
+  if (pressConnections > 0) {
+    materials.push({
+      num: num++,
+      name: `Гильза напрессовочная PEX (${pressMaterial === 'metal' ? 'металл' : 'пластик'})`,
+      chars: `${windowCount} × 2 (подача+обратка) + ${pexCouplings} муфт`,
+      unit: 'шт',
+      qty: pressConnections,
+      category: 'pipe_pex',
+      priceKey: null,
+      fixedPrice: pressMaterial === 'metal' ? 45 : 25,
+      section: 'additional'
+    });
+  }
+
+  // --- Крепление стальных трубопроводов ---
+  // Хомуты + анкера + шпильки: ~1 комплект на 1.5 м стояка
+  const steelClamps = Math.round(totalRiserLen / 1.5);
+  if (steelClamps > 0) {
+    materials.push({
+      num: num++,
+      name: 'Комплект крепления труб (хомут + анкер + шпилька)',
+      chars: `Стальные стояки, ~1 шт/1.5 м.п.`,
+      unit: 'компл.',
+      qty: steelClamps,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 120,
+      section: 'additional'
+    });
+  }
+
+  // --- Теплосчётчики ---
+  const heatMeters = state.heatMeterCount || 0;
+  if (heatMeters > 0) {
+    materials.push({
+      num: num++,
+      name: 'Теплосчётчик',
+      chars: `Офисные/БКТ помещения`,
+      unit: 'шт',
+      qty: heatMeters,
+      category: 'misc',
+      priceKey: null,
+      fixedPrice: 15000,
+      section: 'additional'
+    });
+  }
+
+  // ================================================================
+  // ПРИБОРЫ ОТОПЛЕНИЯ (из спецификации Step 6)
+  // ================================================================
+  (state.specData || []).forEach(spec => {
+    materials.push({
+      num: num++,
+      name: spec.name,
+      chars: spec.chars,
+      unit: spec.unit,
+      qty: spec.qty,
+      category: getCategoryForSpec(spec.name),
+      priceKey: getPriceKeyForSpec(spec.name),
+      fixedPrice: estimatePrice(spec.name),
+      section: 'devices'
+    });
+  });
+
+  // ================================================================
+  // ПНР: опробование, промывка, испытание, сдача
+  // ================================================================
+  const totalPipeLen = totalRiserLen + totalPexLen;
+
   materials.push({
     num: num++,
     name: 'Гидравлическое испытание системы',
-    chars: `Общая длина трубопроводов`,
+    chars: `Общая длина трубопроводов: ${totalPipeLen} м.п.`,
     unit: 'м.п.',
     qty: Math.round(totalPipeLen),
     category: 'pnr',
-    priceKey: 'ПНР_гидроиспытание'
+    priceKey: 'ПНР_гидроиспытание',
+    section: 'pnr'
   });
 
   materials.push({
@@ -216,11 +681,149 @@ export function calculateProjectMaterials(state) {
     unit: 'м.п.',
     qty: Math.round(totalPipeLen),
     category: 'pnr',
-    priceKey: 'ПНР_промывка'
+    priceKey: 'ПНР_промывка',
+    section: 'pnr'
+  });
+
+  materials.push({
+    num: num++,
+    name: 'Опробование системы отопления',
+    chars: '',
+    unit: 'м.п.',
+    qty: Math.round(totalPipeLen),
+    category: 'pnr',
+    priceKey: null,
+    fixedPrice: 15,
+    section: 'pnr'
+  });
+
+  materials.push({
+    num: num++,
+    name: 'Сдача системы отопления',
+    chars: '',
+    unit: 'компл.',
+    qty: 1,
+    category: 'pnr',
+    priceKey: null,
+    fixedPrice: 25000,
+    section: 'pnr'
   });
 
   return materials;
 }
+
+// =====================================================================
+// Расчёт объёмов работ
+// =====================================================================
+
+export function calculateWorkQuantities(state) {
+  const windowCount = state.windowCount || 0;
+  const floorH = state.floorHeight_mm || 3000;
+  const riserPairs = state.riserPairs || 0;
+  const manifoldOutputs = state.manifoldOutputs || 0;
+  const apartments = state.apartments || 0;
+  const heatingZones = state.heatingZones || 1;
+  const overrides = state.pipeLenByDiam || {};
+  const routingType = state.pexRoutingType || 'radial';
+  const corridorLen = state.corridorLength_m || 0;
+  const numFloors = getNumFloors(state);
+  const heatLoad_kW = (state.heatLoad_W || 0) / 1000;
+  const schedule = state.schedule || '80/60';
+  const velocity = state.riserVelocity_ms || 0.7;
+
+  const heatPerRiser = riserPairs > 0 ? heatLoad_kW / (riserPairs * heatingZones) : 0;
+  const riserDN = calcRiserDiameter(heatPerRiser, schedule, velocity);
+
+  const totalRiserLen = Math.round((floorH / 1000) * numFloors * riserPairs * 2 * heatingZones);
+
+  // PEX длины
+  let pexD16, pexD20, pexD25;
+  if (routingType === 'radial') {
+    pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 3);
+    pexD20 = overrides[20] != null ? overrides[20] : Math.round(apartments * 5);
+    pexD25 = overrides[25] != null ? overrides[25]
+      : Math.round(corridorLen > 0 ? corridorLen * numFloors * 2 : manifoldOutputs * numFloors * 3);
+  } else {
+    pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 1.5);
+    pexD20 = overrides[20] != null ? overrides[20] : Math.round(windowCount * 2.0);
+    pexD25 = overrides[25] != null ? overrides[25]
+      : Math.round(corridorLen > 0 ? corridorLen * numFloors * 2 : manifoldOutputs * numFloors * 3);
+  }
+
+  const totalPexLen = pexD16 + pexD20 + pexD25;
+  const totalPipeLen = totalRiserLen + totalPexLen;
+  const insulLen = totalRiserLen + Math.round(totalPexLen * 0.4);
+
+  return {
+    // Стальные трубопроводы
+    [`pipe_steel_${riserDN}`]: totalRiserLen,
+    pipe_steel_32: riserDN === 32 ? totalRiserLen : 0,
+    pipe_steel_50: riserDN === 50 ? totalRiserLen : 0,
+    // PEX
+    pipe_pex_16: pexD16,
+    pipe_pex_20: pexD20,
+    pipe_pex_25: pexD25,
+    // Гофра
+    gofra: Math.round(totalPexLen * 0.6),
+    // Коллектор
+    collector: manifoldOutputs * numFloors,
+    // Приборы
+    radiator_install: windowCount,
+    register_install: windowCount,
+    // Узлы
+    bottom_conn: windowCount,
+    end_node: riserPairs * 2,
+    // Изоляция
+    insulation_pe: insulLen,
+    insulation_mw_110: insulLen,
+    // Компенсаторы
+    compensator: calcCompensators(numFloors) * riserPairs * 2 * heatingZones,
+    // Покраска
+    painting: totalRiserLen,
+    // ПНР
+    hydro_test: totalPipeLen,
+    test_heating: totalPipeLen,
+    flush_heating: totalPipeLen,
+    handover_heating: totalPipeLen,
+  };
+}
+
+// =====================================================================
+// Получение цен материалов
+// =====================================================================
+
+export function getMaterialPrice(item, priceMatrix, brandsData, brandSelections) {
+  // 1. price_matrix
+  if (item.priceKey && priceMatrix && priceMatrix[item.priceKey]) {
+    return { price: priceMatrix[item.priceKey].typical, source: 'market' };
+  }
+
+  // 2. brands
+  if (item.category && brandsData?.categories?.[item.category]) {
+    const cat = brandsData.categories[item.category];
+    const brand = brandSelections[item.category];
+    if (brand && cat.prices[brand]) {
+      const prices = cat.prices[brand];
+      if (item.category === 'pipe_pex') {
+        const dMatch = item.name.match(/d(\d+)/);
+        if (dMatch && prices[dMatch[1]]) {
+          return { price: prices[dMatch[1]], source: 'brand' };
+        }
+      }
+      const firstPrice = Object.values(prices)[0];
+      if (firstPrice) return { price: firstPrice, source: 'brand' };
+    }
+  }
+
+  // 3. Фиксированная цена
+  if (item.fixedPrice) return { price: item.fixedPrice, source: 'estimate' };
+
+  return { price: 0, source: 'missing' };
+}
+
+// =====================================================================
+// Вспомогательные для спецификации
+// =====================================================================
 
 function getCategoryForSpec(name) {
   const n = name.toLowerCase();
@@ -230,6 +833,7 @@ function getCategoryForSpec(name) {
   if (n.includes('клапан')) return 'valve_thermo';
   if (n.includes('воздухоотвод') || n.includes('маевского')) return 'valve_thermo';
   if (n.includes('кронштейн')) return 'misc';
+  if (n.includes('rlv') || n.includes('ниппел') || n.includes('евроконус') || n.includes('l-образн')) return 'valve_thermo';
   return 'misc';
 }
 
@@ -255,91 +859,13 @@ function estimatePrice(name) {
   if (n.includes('клапан')) return 1200;
   if (n.includes('воздухоотвод') || n.includes('маевского')) return 200;
   if (n.includes('кронштейн')) return 150;
+  if (n.includes('rlv-k')) return 2800;
+  if (n.includes('rlv') || n.includes('ra-n')) return 1500;
+  if (n.includes('ниппел')) return 200;
+  if (n.includes('евроконус')) return 300;
+  if (n.includes('l-образн')) return 400;
   return 500;
 }
 
-// Расчёт объёмов работ по параметрам проекта
-export function calculateWorkQuantities(state) {
-  const windowCount = state.windowCount || 0;
-  const floorH = state.floorHeight_mm || 3000;
-  const riserPairs = state.riserPairs || 0;
-  const manifoldOutputs = state.manifoldOutputs || 0;
-  const apartments = state.apartments || 0;
-  const overrides = state.pipeLenByDiam || {};
-
-  let numFloors = 16;
-  if (state.projectData && state.selectedBuilding) {
-    const bldg = state.projectData.buildings[state.selectedBuilding];
-    if (bldg && bldg.floors) {
-      const m = bldg.floors.match(/(\d+)-(\d+)/);
-      if (m) numFloors = parseInt(m[2]) - parseInt(m[1]) + 1;
-    }
-  }
-
-  const totalRiserLen = Math.round((floorH / 1000) * numFloors * riserPairs * 2);
-  const mainPipeLen = Math.round(apartments * 6);
-  const pexD16 = overrides[16] != null ? overrides[16] : Math.round(windowCount * 1.5);
-  const pexD20 = overrides[20] != null ? overrides[20] : Math.round(windowCount * 2.0);
-  const pexD25 = overrides[25] != null ? overrides[25] : Math.round(manifoldOutputs * numFloors * 3);
-  const totalPexLen = pexD16 + pexD20 + pexD25;
-  const totalPipeLen = totalRiserLen + mainPipeLen + totalPexLen;
-  const insulLen = totalRiserLen + mainPipeLen;
-
-  return {
-    // Стальные трубопроводы
-    pipe_steel_32: totalRiserLen,
-    pipe_steel_50: mainPipeLen,
-    // PEX
-    pipe_pex_16: pexD16,
-    pipe_pex_20: pexD20,
-    pipe_pex_25: pexD25,
-    // Гофра
-    gofra: totalPexLen,
-    // Коллектор
-    collector: manifoldOutputs * numFloors,
-    // Приборы
-    radiator_install: windowCount,
-    register_install: windowCount,
-    // Узлы
-    bottom_conn: windowCount,
-    end_node: riserPairs * 2,
-    // Изоляция
-    insulation_pe: insulLen,
-    insulation_mw_110: insulLen,
-    // ПНР
-    hydro_test: totalPipeLen,
-    test_heating: totalPipeLen,
-    flush_heating: totalPipeLen,
-    handover_heating: totalPipeLen,
-  };
-}
-
-export function getMaterialPrice(item, priceMatrix, brandsData, brandSelections) {
-  // 1. Попробовать из price_matrix
-  if (item.priceKey && priceMatrix && priceMatrix[item.priceKey]) {
-    return { price: priceMatrix[item.priceKey].typical, source: 'market' };
-  }
-
-  // 2. Попробовать из brands
-  if (item.category && brandsData?.categories?.[item.category]) {
-    const cat = brandsData.categories[item.category];
-    const brand = brandSelections[item.category];
-    if (brand && cat.prices[brand]) {
-      const prices = cat.prices[brand];
-      // Для PEX — ищем по диаметру из имени
-      if (item.category === 'pipe_pex') {
-        const dMatch = item.name.match(/d(\d+)/);
-        if (dMatch && prices[dMatch[1]]) {
-          return { price: prices[dMatch[1]], source: 'brand' };
-        }
-      }
-      const firstPrice = Object.values(prices)[0];
-      if (firstPrice) return { price: firstPrice, source: 'brand' };
-    }
-  }
-
-  // 3. Фиксированная цена
-  if (item.fixedPrice) return { price: item.fixedPrice, source: 'estimate' };
-
-  return { price: 0, source: 'missing' };
-}
+// Экспорт для использования в UI
+export { calcRiserDiameter, calcCompensators, calcFixedSupports, getNumFloors };

@@ -16,6 +16,9 @@
       "riserPairs": 2,
       "manifoldOutputs": 2,
       "heatingZones": 1,
+      "corridorLength_m": 25,
+      "roomsPerApartment": 2,
+      "apartmentsPerFloor": 5,
       "windows": [
         {"width_mm": 1700, "count": 16},
         {"width_mm": 1850, "count": 238},
@@ -31,6 +34,9 @@
       "riserPairs": 2,
       "manifoldOutputs": 11,
       "heatingZones": 1,
+      "corridorLength_m": 30,
+      "roomsPerApartment": 2,
+      "apartmentsPerFloor": 6,
       "windows": [
         {"width_mm": 1700, "count": 14},
         {"width_mm": 1850, "count": 154},
@@ -48,6 +54,9 @@
       "riserPairs": 2,
       "manifoldOutputs": 9,
       "heatingZones": 2,
+      "corridorLength_m": 50,
+      "roomsPerApartment": 2,
+      "apartmentsPerFloor": 11,
       "windows": [
         {"width_mm": 2200, "count": 929},
         {"width_mm": 1200, "count": 63}
