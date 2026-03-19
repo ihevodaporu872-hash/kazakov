@@ -161,13 +161,82 @@ export async function exportToExcel(state, workRows, materialRows, totalWork, to
   totalRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
   totalRow.getCell(2).numFmt = '#,##0';
 
-  // === Лист 2: Подбор приборов ===
-  const ws2 = wb.addWorksheet('Подбор приборов');
-  ws2.columns = [{ width: 8 }, { width: 15 }, { width: 15 }, { width: 12 }, { width: 15 }, { width: 45 }, { width: 15 }];
-  ws2.addRow(['№ окна', 'Шир. окна', 'Длина прибора', 'Высота', 'Q треб., Вт', 'Прибор', 'Q факт., Вт']);
-  styleHeader(ws2.getRow(1));
-  (state.perWindow || []).forEach(w => {
-    ws2.addRow([w.idx, w.width, w.devLen, w.devHeight, w.powerReq, w.deviceName, w.powerFact]);
+  // === Лист 2: Блок 2 — Подбор приборов ===
+  const ws2 = wb.addWorksheet('Блок 2 — Подбор приборов');
+  ws2.columns = [{ width: 8 }, { width: 50 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 12 }];
+
+  // Заголовок
+  const title2 = ws2.addRow(['БЛОК 2: ПОДБОР ПРИБОРОВ ОТОПЛЕНИЯ']);
+  title2.font = { bold: true, size: 14 };
+  ws2.mergeCells('A1:G1');
+  ws2.addRow([]);
+
+  // --- Параметры подбора ---
+  const selParams = ws2.addRow(['ПАРАМЕТРЫ ПОДБОРА']);
+  selParams.font = { bold: true, size: 11 };
+  selParams.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws2.addRow(['', 'Тип приборов', DEVICE_TYPE_LABELS[state.deviceType] || state.deviceType]);
+  ws2.addRow(['', 'Температурный график', state.schedule]);
+  ws2.addRow(['', 'Δt (расчётный)', state.deltaT.toFixed(1) + ' °C']);
+  ws2.addRow(['', 'Удельная мощность (Q на п.м.)', (state.powerPerMeter_W || 0).toFixed(0) + ' Вт/м']);
+
+  if (state.deviceType === 'inFloor') {
+    ws2.addRow(['', 'Глубина конвектора', (state.convDepth || 130) + ' мм']);
+    ws2.addRow(['', 'Тип конвектора', state.convFan === 'fan' ? 'С вентилятором' : 'Без вентилятора']);
+  } else {
+    ws2.addRow(['', 'Единая высота радиатора', (state.panelHeight || state.deviceHeight_mm || '—') + ' мм']);
+  }
+
+  ws2.addRow([]);
+
+  // --- Сгруппированная ведомость ---
+  const perWindow = state.perWindow || [];
+  const grouped = {};
+  perWindow.forEach(w => {
+    const key = w.deviceName;
+    if (!grouped[key]) grouped[key] = { deviceName: w.deviceName, count: 0, powerReq: w.powerReq, powerFact: w.powerFact };
+    grouped[key].count++;
+  });
+  const groupedArr = Object.values(grouped).map(g => ({
+    ...g,
+    margin: g.powerReq > 0 ? ((g.powerFact - g.powerReq) / g.powerReq * 100) : 0
+  }));
+
+  const grpSection = ws2.addRow(['ВЕДОМОСТЬ ПОДБОРА (сгруппировано)']);
+  grpSection.font = { bold: true, size: 11 };
+  grpSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws2.addRow(['№', 'Прибор', 'Кол-во', 'Q треб., Вт', 'Q факт., Вт', 'Запас, %']);
+  styleHeader(ws2.getRow(ws2.rowCount));
+
+  groupedArr.forEach((g, i) => {
+    ws2.addRow([i + 1, g.deviceName, g.count, g.powerReq, g.powerFact,
+      (g.margin >= 0 ? '+' : '') + g.margin.toFixed(0) + '%']);
+  });
+
+  // Итого
+  const totalReq = perWindow.reduce((s, w) => s + (w.powerReq || 0), 0);
+  const totalFact = perWindow.reduce((s, w) => s + (w.powerFact || 0), 0);
+  const totalMargin = totalReq > 0 ? ((totalFact - totalReq) / totalReq * 100) : 0;
+  const grpTotal = ws2.addRow(['', 'ИТОГО', perWindow.length, totalReq, totalFact,
+    (totalMargin >= 0 ? '+' : '') + totalMargin.toFixed(1) + '%']);
+  grpTotal.font = { bold: true };
+  grpTotal.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+  grpTotal.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+
+  ws2.addRow([]);
+
+  // --- Детальная таблица по окнам ---
+  const detSection = ws2.addRow(['ДЕТАЛЬНЫЙ ПОДБОР ПО ОКНАМ']);
+  detSection.font = { bold: true, size: 11 };
+  detSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws2.addRow(['№ окна', 'Прибор', 'Шир. окна', 'Длина прибора', 'Высота', 'Q треб., Вт', 'Q факт., Вт']);
+  styleHeader(ws2.getRow(ws2.rowCount));
+
+  perWindow.forEach(w => {
+    ws2.addRow([w.idx, w.deviceName, w.width, w.devLen, w.devHeight, w.powerReq, w.powerFact]);
   });
 
   // === Лист 3: Спецификация ===
