@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { DEVICE_TYPE_LABELS, THERMO_LABELS, VALVE_LABELS } from '../calc/heatCalc';
+import { getNumFloors, getTopFloor, calcRiserDiameter, calcZoneRiserLengths } from '../calc/materialCalc';
 
 const COLORS = {
   contractor: 'FFFFFF',
@@ -10,6 +11,7 @@ const COLORS = {
   missing: 'FEE2E2',
   header: 'DBEAFE',
   total: 'F0F9FF',
+  section: 'E8F0FE',
 };
 
 export async function exportToExcel(state, workRows, materialRows, totalWork, totalMaterials, grandTotal) {
@@ -17,26 +19,147 @@ export async function exportToExcel(state, workRows, materialRows, totalWork, to
   wb.creator = 'Расчёт отопления';
   wb.created = new Date();
 
-  // === Лист 1: Сводка ===
-  const ws1 = wb.addWorksheet('Сводка');
-  ws1.columns = [{ width: 35 }, { width: 30 }];
-  ws1.addRow(['Параметр', 'Значение']);
-  styleHeader(ws1.getRow(1));
-  ws1.addRow(['Дата расчёта', new Date().toLocaleDateString('ru-RU')]);
-  ws1.addRow(['Расход тепла, кВт', (state.heatLoad_W / 1000).toFixed(2)]);
-  ws1.addRow(['Кол-во приборов', state.windowCount]);
-  ws1.addRow(['Температурный график', state.schedule]);
-  ws1.addRow(['Δt, °C', state.deltaT.toFixed(1)]);
-  ws1.addRow(['Тип приборов', DEVICE_TYPE_LABELS[state.deviceType] || state.deviceType]);
-  ws1.addRow(['Термоголовка', THERMO_LABELS[state.thermoHead] || state.thermoHead]);
-  ws1.addRow(['Регулирующий клапан', VALVE_LABELS[state.valve] || state.valve]);
-  ws1.addRow(['Подрядчик', state.contractorsData?.contractors?.[state.contractor]?.name || state.contractor]);
+  // === Лист 1: Блок 1 — Исходные данные ===
+  const ws1 = wb.addWorksheet('Блок 1 — Исходные данные');
+  ws1.columns = [{ width: 40 }, { width: 25 }, { width: 20 }];
+
+  // Заголовок
+  const titleRow = ws1.addRow(['БЛОК 1: ИСХОДНЫЕ ДАННЫЕ']);
+  titleRow.font = { bold: true, size: 14 };
+  ws1.mergeCells('A1:C1');
   ws1.addRow([]);
-  ws1.addRow(['Стоимость работ, руб', Math.round(totalWork)]);
-  ws1.addRow(['Стоимость материалов, руб', Math.round(totalMaterials)]);
-  const totalRow = ws1.addRow(['ИТОГО, руб', Math.round(grandTotal)]);
+
+  // --- Проект ---
+  const projSection = ws1.addRow(['ПРОЕКТ']);
+  projSection.font = { bold: true, size: 11 };
+  projSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws1.addRow(['Дата расчёта', new Date().toLocaleDateString('ru-RU')]);
+  ws1.addRow(['Наименование проекта', state.projectName || '—']);
+  ws1.addRow(['Система отопления', state.systemType || '—']);
+  ws1.addRow(['Разводка', state.distribution || '—']);
+
+  ws1.addRow([]);
+
+  // --- Теплотехника ---
+  const heatSection = ws1.addRow(['ТЕПЛОТЕХНИЧЕСКИЕ ПАРАМЕТРЫ']);
+  heatSection.font = { bold: true, size: 11 };
+  heatSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws1.addRow(['Параметр', 'Значение', 'Ед. изм.']);
+  styleHeader(ws1.getRow(ws1.rowCount));
+
+  ws1.addRow(['Расход тепла', (state.heatLoad_W / 1000).toFixed(2), 'кВт']);
+  ws1.addRow(['Расход тепла', (state.heatLoad_W / 1000000).toFixed(4), 'МВт']);
+  ws1.addRow(['Расход тепла', (state.heatLoad_W / 1163000).toFixed(4), 'Гкал/ч']);
+  ws1.addRow(['Температурный график', state.schedule, '°C']);
+  ws1.addRow(['Δt (расчётный)', state.deltaT.toFixed(1), '°C']);
+  ws1.addRow(['t внутр. воздуха', state.tInside || 20, '°C']);
+
+  ws1.addRow([]);
+
+  // --- Здание ---
+  const bldgSection = ws1.addRow(['ПАРАМЕТРЫ ЗДАНИЯ']);
+  bldgSection.font = { bold: true, size: 11 };
+  bldgSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws1.addRow(['Параметр', 'Значение', 'Ед. изм.']);
+  styleHeader(ws1.getRow(ws1.rowCount));
+
+  const numFloors = getNumFloors(state);
+  const bldg = state.projectData?.buildings?.[state.selectedBuilding];
+  ws1.addRow(['Этажи', bldg?.floors || numFloors, '']);
+  ws1.addRow(['Кол-во этажей (расчётное)', numFloors, 'шт']);
+  ws1.addRow(['Высота этажа', state.floorHeight_mm || 3000, 'мм']);
+  ws1.addRow(['Высота простенка', state.wallHeight_mm || '—', 'мм']);
+  ws1.addRow(['Высота стяжки', state.screedHeight_mm || 100, 'мм']);
+  ws1.addRow(['Квартир (всего)', state.apartments || '—', 'шт']);
+  ws1.addRow(['Квартир на этаже', state.apartmentsPerFloor || '—', 'шт']);
+  ws1.addRow(['Длина коридора', state.corridorLength_m || '—', 'м']);
+
+  ws1.addRow([]);
+
+  // --- Отопительные приборы ---
+  const devSection = ws1.addRow(['ОТОПИТЕЛЬНЫЕ ПРИБОРЫ']);
+  devSection.font = { bold: true, size: 11 };
+  devSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws1.addRow(['Параметр', 'Значение', 'Ед. изм.']);
+  styleHeader(ws1.getRow(ws1.rowCount));
+
+  ws1.addRow(['Кол-во окон (= кол-во приборов)', state.windowCount, 'шт']);
+  ws1.addRow(['Тип приборов', DEVICE_TYPE_LABELS[state.deviceType] || state.deviceType, '']);
+  ws1.addRow(['Высота прибора', state.deviceHeight_mm || '—', 'мм']);
+  ws1.addRow(['Термоголовка', THERMO_LABELS[state.thermoHead] || state.thermoHead, '']);
+  ws1.addRow(['Регулирующий клапан', VALVE_LABELS[state.valve] || state.valve, '']);
+
+  ws1.addRow([]);
+
+  // --- Трубопроводы ---
+  const pipeSection = ws1.addRow(['ТРУБОПРОВОДЫ']);
+  pipeSection.font = { bold: true, size: 11 };
+  pipeSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws1.addRow(['Параметр', 'Значение', 'Ед. изм.']);
+  styleHeader(ws1.getRow(ws1.rowCount));
+
+  ws1.addRow(['Пар стояков (на этаж)', state.riserPairs || '—', 'шт']);
+  ws1.addRow(['Зон отопления', state.heatingZones || 1, 'шт']);
+
+  const zoneBoundaries = state.zoneBoundaries || [];
+  if (zoneBoundaries.length > 0) {
+    ws1.addRow(['Границы зон (этажи)', zoneBoundaries.join(', '), '']);
+  }
+
+  // Расчётный DN стояка
+  const heatLoad_kW = (state.heatLoad_W || 0) / 1000;
+  const riserPairs = state.riserPairs || 0;
+  const heatingZones = state.heatingZones || 1;
+  const velocity = state.riserVelocity_ms || 0.7;
+  const heatPerRiser = riserPairs > 0 ? heatLoad_kW / (riserPairs * heatingZones) : 0;
+  const riserDN = calcRiserDiameter(heatPerRiser, state.schedule || '80/60', velocity);
+  ws1.addRow(['Скорость теплоносителя в стояке', velocity, 'м/с']);
+  ws1.addRow(['Нагрузка на стояк (расчётная)', heatPerRiser.toFixed(2), 'кВт']);
+  ws1.addRow(['DN стояка (расчётный)', 'Ду' + riserDN, 'мм']);
+
+  ws1.addRow(['Выходов гребёнок (на этаж)', state.manifoldOutputs || '—', 'шт']);
+  ws1.addRow(['Тип разводки PEX', state.pexRoutingType === 'series' ? 'Попутная (тройники)' : 'Лучевая (коллектор)', '']);
+  ws1.addRow(['Ср. кол-во комнат / квартиру', state.roomsPerApartment || 2, 'шт']);
+  ws1.addRow(['Толщина изоляции', state.insulationThickness_mm || 13, 'мм']);
+
+  ws1.addRow([]);
+
+  // --- Зональный расчёт ---
+  if (riserPairs > 0) {
+    const zoneSection = ws1.addRow(['ЗОНАЛЬНЫЙ РАСЧЁТ СТОЯКОВ']);
+    zoneSection.font = { bold: true, size: 11 };
+    zoneSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+    ws1.addRow(['Зона', 'Верхний этаж', 'Длина стояка, м']);
+    styleHeader(ws1.getRow(ws1.rowCount));
+
+    const floorH_m = (state.floorHeight_mm || 3000) / 1000;
+    const topFloor = getTopFloor(state);
+    const zoneData = calcZoneRiserLengths(zoneBoundaries, topFloor, floorH_m);
+    zoneData.forEach(z => {
+      ws1.addRow([`Зона ${z.zoneNum}`, `${z.topFloor} эт. (${z.floorsInZone} эт. в зоне)`, z.riserLength]);
+    });
+  }
+
+  ws1.addRow([]);
+
+  // --- Подрядчик и итоги ---
+  const costSection = ws1.addRow(['ПОДРЯДЧИК И ИТОГИ']);
+  costSection.font = { bold: true, size: 11 };
+  costSection.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLORS.section } }; });
+
+  ws1.addRow(['Подрядчик', state.contractorsData?.contractors?.[state.contractor]?.name || state.contractor, '']);
+  ws1.addRow(['Стоимость работ', Math.round(totalWork), 'руб']);
+  ws1.addRow(['Стоимость материалов', Math.round(totalMaterials), 'руб']);
+  const totalRow = ws1.addRow(['ИТОГО', Math.round(grandTotal), 'руб']);
   totalRow.font = { bold: true, size: 14 };
   totalRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+  totalRow.getCell(2).numFmt = '#,##0';
 
   // === Лист 2: Подбор приборов ===
   const ws2 = wb.addWorksheet('Подбор приборов');
