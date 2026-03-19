@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import StepCard from '../components/StepCard';
 import { useProject } from '../state/ProjectContext';
 import { toWatts, calcDeltaT, SCHEDULES } from '../calc/heatCalc';
+import { importFromExcel, importFromGoogleSheets } from '../io/excelImport';
 
 export default function Step1_InitialData() {
   const { state, dispatch } = useProject();
@@ -21,6 +22,11 @@ export default function Step1_InitialData() {
   );
   const [projectLoaded, setProjectLoaded] = useState(false);
   const [selectedBldg, setSelectedBldg] = useState('');
+  const [importStatus, setImportStatus] = useState(''); // 'loading' | 'success' | 'error'
+  const [importError, setImportError] = useState('');
+  const [showGoogleInput, setShowGoogleInput] = useState(false);
+  const [googleUrl, setGoogleUrl] = useState('');
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetch('/data/project_308.json')
@@ -95,6 +101,55 @@ export default function Step1_InitialData() {
     });
   };
 
+  // Применить импортированные данные к локальным полям и state
+  const applyImported = (imported) => {
+    if (imported.windowCount) setCount(imported.windowCount);
+    if (imported.heatLoad_W) { setLoad(imported.heatLoad_W / 1000); setUnit('kw'); }
+    if (imported.wallHeight_mm) setWh(imported.wallHeight_mm);
+    if (imported.screedHeight_mm) setSh(imported.screedHeight_mm);
+    if (imported.schedule) setSchedule(imported.schedule);
+    if (imported.corridorLength_m) setCorridorLen(imported.corridorLength_m);
+    if (imported.pexRoutingType) setRoutingType(imported.pexRoutingType);
+    if (imported.roomsPerApartment) setRoomsPerApt(imported.roomsPerApartment);
+    if (imported.apartmentsPerFloor) setAptsPerFloor(imported.apartmentsPerFloor);
+    if (imported.zoneBoundaries) setZoneBounds(imported.zoneBoundaries.join(', '));
+    setProjectLoaded(true);
+    dispatch({ type: 'SET', payload: imported });
+  };
+
+  const handleExcelImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportStatus('loading');
+    setImportError('');
+    try {
+      const imported = await importFromExcel(file);
+      applyImported(imported);
+      setImportStatus('success');
+    } catch (err) {
+      setImportStatus('error');
+      setImportError(err.message || 'Ошибка импорта');
+    }
+    // Сбросить input, чтобы повторно можно было выбрать тот же файл
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleGoogleImport = async () => {
+    if (!googleUrl.trim()) return;
+    setImportStatus('loading');
+    setImportError('');
+    try {
+      const imported = await importFromGoogleSheets(googleUrl.trim());
+      applyImported(imported);
+      setImportStatus('success');
+      setShowGoogleInput(false);
+      setGoogleUrl('');
+    } catch (err) {
+      setImportStatus('error');
+      setImportError(err.message || 'Ошибка импорта');
+    }
+  };
+
   const handleNext = () => {
     const c = parseInt(count);
     const l = parseFloat(load);
@@ -134,6 +189,59 @@ export default function Step1_InitialData() {
 
   return (
     <StepCard step={1} title="Исходные данные">
+      {/* --- Импорт данных --- */}
+      <div className="info-box" style={{ marginBottom: 16 }}>
+        <strong>Импорт исходных данных</strong>
+        <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleExcelImport}
+            style={{ display: 'none' }}
+          />
+          <button
+            className="btn btn-secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importStatus === 'loading'}
+          >
+            Из Excel (.xlsx)
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowGoogleInput(!showGoogleInput)}
+            disabled={importStatus === 'loading'}
+          >
+            Из Google Таблицы
+          </button>
+          {importStatus === 'loading' && <span style={{ color: 'var(--text2)', fontSize: '0.85rem' }}>Загрузка...</span>}
+          {importStatus === 'success' && <span style={{ color: '#16a34a', fontSize: '0.85rem', fontWeight: 600 }}>Данные загружены</span>}
+          {importStatus === 'error' && <span style={{ color: '#dc2626', fontSize: '0.85rem' }}>{importError}</span>}
+        </div>
+        {showGoogleInput && (
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text2)' }}>
+                URL Google Таблицы (должна быть опубликована: Файл → Поделиться → Опубликовать в интернете)
+              </label>
+              <input
+                type="url"
+                value={googleUrl}
+                onChange={e => setGoogleUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                onKeyDown={e => e.key === 'Enter' && handleGoogleImport()}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={handleGoogleImport} style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>
+              Загрузить
+            </button>
+          </div>
+        )}
+        <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text2)' }}>
+          Формат: две колонки «Параметр» и «Значение». Окна: «Ширина 1700 мм» → кол-во.
+        </div>
+      </div>
+
       {project && (
         <div className="info-box" style={{ marginBottom: 16 }}>
           <strong>Проект: {project.name}</strong>
