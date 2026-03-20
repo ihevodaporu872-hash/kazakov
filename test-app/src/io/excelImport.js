@@ -275,10 +275,41 @@ function parseMultiBuildingSheet(ws) {
 
   if (buildingCols.length === 0) return null;
 
+  // Определяем секции каждого корпуса (столбцы между Итогами)
+  let prevCol = 2; // первый столбец данных
+  for (let i = 0; i < buildingCols.length; i++) {
+    const sections = [];
+    for (let c = prevCol; c < buildingCols[i].col; c++) {
+      const secName = getStr(sectionRow, c).toLowerCase().trim();
+      if (secName && !secName.includes('итог')) sections.push(c);
+    }
+    // Если нет секций (Итог = единственный столбец), секция = сам Итог
+    if (sections.length === 0) sections.push(buildingCols[i].col);
+    buildingCols[i].sections = sections;
+    prevCol = buildingCols[i].col + 1;
+  }
+
+  // Читать значение: из Итог-столбца, или суммировать секции если формула
+  const readVal = (r, bldg) => {
+    const v = getVal(r, bldg.col);
+    if (v != null) return v;
+    // Итог — формула без результата, суммируем секции
+    let sum = null;
+    for (const sc of bldg.sections) {
+      const sv = getVal(r, sc);
+      if (sv != null) {
+        const n = parseFloat(sv);
+        if (!isNaN(n)) sum = (sum || 0) + n;
+      }
+    }
+    return sum;
+  };
+
   // Сканируем параметры в столбце A — начинаем после строки секций
   const maxRow = Math.max(ws.rowCount || 0, ws.actualRowCount || 0, 1000);
   const paramRows = {};
   let windowSectionRow = -1;
+  let manifoldSectionRow = -1;
 
   for (let r = sectionRow + 1; r <= maxRow; r++) {
     const raw = ws.getRow(r).getCell(1).value;
@@ -292,6 +323,12 @@ function parseMultiBuildingSheet(ws) {
       continue;
     }
 
+    // Секция коллекторов: «Квартир на этаже» + «отвод» или «коллектор»
+    if ((n.includes('квартир на этаже') || n.includes('отводов коллектор')) && manifoldSectionRow < 0) {
+      manifoldSectionRow = r;
+      continue;
+    }
+
     const mapping = findMultiField(raw);
     if (mapping && !paramRows[mapping.field]) {
       paramRows[mapping.field] = { row: r, mapping };
@@ -300,18 +337,44 @@ function parseMultiBuildingSheet(ws) {
 
   // Извлекаем данные для каждого корпуса
   const buildings = {};
-  for (const { col, name } of buildingCols) {
+  for (const bldgInfo of buildingCols) {
+    const { col, name, sections } = bldgInfo;
     const bldg = { name };
 
-    // Считываем параметры
+    // Считываем параметры (из Итог или суммой секций)
     for (const [field, { row, mapping }] of Object.entries(paramRows)) {
-      const val = getVal(row, col);
+      const val = readVal(row, bldgInfo);
       if (val != null) {
         bldg[field] = mapping.transform ? mapping.transform(val) : val;
       }
     }
 
-    // Окна: ширина в столбце A, кол-во в столбце корпуса
+    // Дефолты
+    if (!bldg.riserPairs) bldg.riserPairs = 1;
+    if (!bldg.heatingZones) bldg.heatingZones = 1;
+
+    // Коллекторы: столбец A = кол-во отводов, столбцы секций = кол-во коллекторов
+    if (manifoldSectionRow > 0) {
+      let totalManifolds = 0;
+      for (let r = manifoldSectionRow + 1; r <= maxRow; r++) {
+        const outputsRaw = cellValue(ws.getRow(r).getCell(1).value);
+        const outputs = parseInt(outputsRaw);
+        if (isNaN(outputs) || outputs <= 0) {
+          if (outputsRaw != null && String(outputsRaw).trim() !== '' && !/^\d/.test(String(outputsRaw))) break;
+          continue;
+        }
+        // Суммируем количество коллекторов из всех секций корпуса
+        for (const sc of sections) {
+          const count = parseInt(getVal(r, sc)) || 0;
+          totalManifolds += count;
+        }
+      }
+      const floors = bldg.floors || 1;
+      bldg.manifoldOutputs = Math.round(totalManifolds / floors) || 1;
+      bldg.totalManifolds = totalManifolds;
+    }
+
+    // Окна: ширина в столбце A, кол-во суммируем из Итог или секций
     const windows = [];
     if (windowSectionRow > 0) {
       for (let r = windowSectionRow + 1; r <= maxRow; r++) {
@@ -321,7 +384,13 @@ function parseMultiBuildingSheet(ws) {
           if (widthRaw != null && String(widthRaw).trim() !== '') break;
           continue;
         }
-        const count = parseInt(getVal(r, col)) || 0;
+        // Из Итог или сумма секций
+        let count = parseInt(getVal(r, col)) || 0;
+        if (count === 0) {
+          for (const sc of sections) {
+            count += parseInt(getVal(r, sc)) || 0;
+          }
+        }
         if (count > 0) {
           windows.push({ width_mm: width, count });
         }
