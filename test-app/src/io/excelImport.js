@@ -220,30 +220,31 @@ function isMultiBuildingFormat(ws) {
 function parseMultiBuildingSheet(ws) {
   const getCellVal = (r, c) => ws.getRow(r).getCell(c).value;
 
-  // Находим столбцы «Итог»
-  const maxCol = ws.columnCount || 20;
+  // Находим столбцы «Итог» — итерируем ячейки строки 2
   const buildingCols = [];
-  for (let c = 2; c <= maxCol; c++) {
-    const val = String(getCellVal(2, c) || '').toLowerCase().trim();
+  const row2 = ws.getRow(2);
+  row2.eachCell({ includeEmpty: false }, (cell, colNum) => {
+    if (colNum <= 1) return;
+    const val = String(cell.value || '').toLowerCase().trim();
     if (val.includes('итог')) {
       // Имя корпуса из строки 1
-      let name = getCellVal(1, c);
+      let name = getCellVal(1, colNum);
       if (!name) {
         // Ищем имя левее
-        for (let cc = c - 1; cc >= 2; cc--) {
+        for (let cc = colNum - 1; cc >= 2; cc--) {
           const v = getCellVal(1, cc);
           if (v) { name = v; break; }
         }
       }
       name = String(name || `Корпус ${buildingCols.length + 1}`).trim();
-      buildingCols.push({ col: c, name });
+      buildingCols.push({ col: colNum, name });
     }
-  }
+  });
 
   if (buildingCols.length === 0) return null;
 
-  // Сканируем параметры в столбце A
-  const maxRow = ws.rowCount || 200;
+  // Сканируем параметры в столбце A — итерируем строки
+  const maxRow = ws.actualRowCount || ws.rowCount || 200;
   const paramRows = {}; // field → rowNum
   let windowSectionRow = -1;
 
