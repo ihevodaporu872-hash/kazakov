@@ -157,7 +157,7 @@ export async function importFromExcel(file) {
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
       if (colNum <= 2) cells[colNum - 1] = cell.value;
     });
-    if (cells.length > 0) rows.push([cells[0] || '', cells[1] || '']);
+    if (cells.length > 0) rows.push([cells[0] != null ? cells[0] : '', cells[1] != null ? cells[1] : '']);
   });
 
   return parseImportRows(rows);

@@ -10,13 +10,13 @@ export default function Step2_Windows() {
   const initialGroups = buildGroupsFromWindows(state.windows);
   const [groups, setGroups] = useState(initialGroups.length > 0 ? initialGroups : [{ width_mm: '', count: '' }]);
 
-  // При загрузке проекта обновляем группы
+  // При импорте данных обновляем группы
   useEffect(() => {
     if (state.windows.length > 0) {
       const g = buildGroupsFromWindows(state.windows);
       if (g.length > 0) setGroups(g);
     }
-  }, [state.selectedBuilding]);
+  }, [state.windows]);
 
   const updateGroup = (idx, field, val) => {
     const next = [...groups];

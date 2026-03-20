@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import StepCard from '../components/StepCard';
 import { useProject } from '../state/ProjectContext';
 import { toWatts, calcDeltaT, SCHEDULES } from '../calc/heatCalc';
@@ -20,86 +20,11 @@ export default function Step1_InitialData() {
   const [zoneBounds, setZoneBounds] = useState(
     (state.zoneBoundaries || []).join(', ')
   );
-  const [projectLoaded, setProjectLoaded] = useState(false);
-  const [selectedBldg, setSelectedBldg] = useState('');
   const [importStatus, setImportStatus] = useState(''); // 'loading' | 'success' | 'error'
   const [importError, setImportError] = useState('');
   const [showGoogleInput, setShowGoogleInput] = useState(false);
   const [googleUrl, setGoogleUrl] = useState('');
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    fetch('/data/project_308.json')
-      .then(r => r.json())
-      .then(data => dispatch({ type: 'SET', payload: { projectData: data } }));
-  }, [dispatch]);
-
-  const project = state.projectData;
-
-  const applyProject = (buildingKey) => {
-    if (!project) return;
-    const bldg = project.buildings[buildingKey];
-    if (!bldg) return;
-
-    const sched = project.coolant || '80/60';
-    const dt = calcDeltaT(sched, 20);
-    const heatW = bldg.heatLoad_kW * 1000;
-
-    const allWindows = [];
-    bldg.windows.forEach(wg => {
-      for (let i = 0; i < wg.count; i++) {
-        allWindows.push({ width_mm: wg.width_mm, deviceLength_mm: Math.max(0, wg.width_mm - 200) });
-      }
-    });
-
-    // Определяем тип разводки из проекта
-    const dist = (project.distribution || '').toLowerCase();
-    const routing = dist.includes('попутн') ? 'series' : 'radial';
-
-    setCount(bldg.totalWindows);
-    setLoad(bldg.heatLoad_kW);
-    setUnit('kw');
-    setWh(project.wallHeight_mm);
-    setSh(100);
-    setSchedule(sched);
-    setTIn(20);
-    setCorridorLen(bldg.corridorLength_m || '');
-    setRoutingType(routing);
-    setRoomsPerApt(bldg.roomsPerApartment || 2);
-    setAptsPerFloor(bldg.apartmentsPerFloor || '');
-    setZoneBounds((bldg.zoneBoundaries || []).join(', '));
-    setSelectedBldg(buildingKey);
-    setProjectLoaded(true);
-
-    dispatch({
-      type: 'SET',
-      payload: {
-        selectedBuilding: buildingKey,
-        projectName: project.name + ' — ' + bldg.name,
-        systemType: project.system,
-        distribution: project.distribution,
-        insulationThickness_mm: project.insulationThickness_mm,
-        floorHeight_mm: project.floorHeight_mm,
-        riserPairs: bldg.riserPairs,
-        manifoldOutputs: bldg.manifoldOutputs,
-        heatingZones: bldg.heatingZones,
-        apartments: bldg.apartments,
-        windowCount: bldg.totalWindows,
-        heatLoad_W: heatW,
-        wallHeight_mm: project.wallHeight_mm,
-        screedHeight_mm: 100,
-        schedule: sched,
-        tInside: 20,
-        deltaT: dt,
-        windows: allWindows,
-        corridorLength_m: bldg.corridorLength_m || 0,
-        pexRoutingType: routing,
-        roomsPerApartment: bldg.roomsPerApartment || 2,
-        apartmentsPerFloor: bldg.apartmentsPerFloor || 0,
-        zoneBoundaries: bldg.zoneBoundaries || [],
-      },
-    });
-  };
 
   // Применить импортированные данные к локальным полям и state
   const applyImported = (imported) => {
@@ -113,7 +38,6 @@ export default function Step1_InitialData() {
     if (imported.roomsPerApartment != null) setRoomsPerApt(imported.roomsPerApartment);
     if (imported.apartmentsPerFloor != null) setAptsPerFloor(imported.apartmentsPerFloor);
     if (imported.zoneBoundaries) setZoneBounds(imported.zoneBoundaries.join(', '));
-    setProjectLoaded(true);
     dispatch({ type: 'SET', payload: imported });
   };
 
@@ -242,44 +166,24 @@ export default function Step1_InitialData() {
         </div>
       </div>
 
-      {project && (
+      {importStatus === 'success' && state.projectName && (
         <div className="info-box" style={{ marginBottom: 16 }}>
-          <strong>Проект: {project.name}</strong>
-          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {Object.entries(project.buildings).map(([key, bldg]) => (
-              <button
-                key={key}
-                className={`btn ${selectedBldg === key ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => applyProject(key)}
-              >
-                {bldg.name} ({bldg.heatLoad_kW} кВт, {bldg.totalWindows} окон)
-              </button>
-            ))}
+          <strong>Проект: {state.projectName}</strong>
+          <div style={{ marginTop: 8, fontSize: '0.85rem' }}>
+            <table style={{ width: 'auto' }}>
+              <tbody>
+                {state.systemType && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Система отопления</td><td><strong>{state.systemType}</strong></td></tr>}
+                {state.distribution && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Разводка</td><td><strong>{state.distribution}</strong></td></tr>}
+                <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Теплоноситель</td><td><strong>{state.schedule}</strong></td></tr>
+                {state.floors && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Этажи</td><td><strong>{state.floors}</strong></td></tr>}
+                {state.apartments > 0 && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Квартиры</td><td><strong>{state.apartments}</strong></td></tr>}
+                {state.riserPairs > 0 && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Пар стояков</td><td><strong>{state.riserPairs}</strong></td></tr>}
+                {state.manifoldOutputs > 0 && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Выходов гребёнок</td><td><strong>{state.manifoldOutputs}</strong></td></tr>}
+                {state.heatingZones > 1 && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Зон отопления</td><td><strong>{state.heatingZones}</strong></td></tr>}
+                {state.windows.length > 0 && <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Окна (импорт)</td><td><strong>{state.windows.length} шт</strong></td></tr>}
+              </tbody>
+            </table>
           </div>
-          {projectLoaded && state.selectedBuilding && project.buildings[state.selectedBuilding] && (() => {
-            const b = project.buildings[state.selectedBuilding];
-            return (
-              <div style={{ marginTop: 12, fontSize: '0.85rem' }}>
-                <table style={{ width: 'auto' }}>
-                  <tbody>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Система отопления</td><td><strong>{project.system}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Теплоноситель</td><td><strong>{project.coolant}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Разводка</td><td><strong>{project.distribution}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Высота простенка</td><td><strong>{project.wallHeight_mm} мм</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Высота этажа</td><td><strong>{project.floorHeight_mm} мм</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Толщина изоляции</td><td><strong>{project.insulationThickness_mm} мм</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Квартиры</td><td><strong>{b.apartments}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Этажи</td><td><strong>{b.floors}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Пар стояков (на этаж)</td><td><strong>{b.riserPairs}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Выходов гребёнок (на этаж)</td><td><strong>{b.manifoldOutputs}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Зон отопления</td><td><strong>{b.heatingZones}</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Длина коридора</td><td><strong>{b.corridorLength_m || '—'} м</strong></td></tr>
-                    <tr><td style={{ color: 'var(--text2)', paddingRight: 16 }}>Комнат/квартиру (ср.)</td><td><strong>{b.roomsPerApartment || 2}</strong></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            );
-          })()}
         </div>
       )}
 

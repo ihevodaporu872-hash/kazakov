@@ -67,8 +67,7 @@ export async function exportToExcel(state, workRows, materialRows, totalWork, to
   styleHeader(ws1.getRow(ws1.rowCount));
 
   const numFloors = getNumFloors(state);
-  const bldg = state.projectData?.buildings?.[state.selectedBuilding];
-  ws1.addRow(['Этажи', bldg?.floors || numFloors, '']);
+  ws1.addRow(['Этажи', state.floors || numFloors, '']);
   ws1.addRow(['Кол-во этажей (расчётное)', numFloors, 'шт']);
   ws1.addRow(['Высота этажа', state.floorHeight_mm || 3000, 'мм']);
   ws1.addRow(['Высота простенка', state.wallHeight_mm || '—', 'мм']);
