@@ -39,6 +39,7 @@ function AppContent() {
     <div className="container">
       <h1>Расчёт отопления</h1>
       <p className="subtitle">Подбор приборов, расценки работ, стоимость материалов</p>
+      <div style={{ textAlign: 'right', fontSize: '0.7rem', color: 'var(--text2)', marginTop: -8, marginBottom: 8 }}>v1.4.0</div>
 
       <Step1_InitialData />
       <Step2_Windows />
