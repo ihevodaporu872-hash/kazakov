@@ -32,10 +32,17 @@ const PARAM_MAP = [
   }},
 ];
 
-// Парсим строки окон: «Ширина XXXX мм» → { width_mm, count }
+// Парсим строки окон
+// Формат 1: «Ширина 1700 мм» → кол-во (старый шаблон)
+// Формат 2: заголовок «ширина простенка окна мм/кол-во», далее числовые строки: ширина → кол-во
 function isWindowRow(paramName) {
   const n = String(paramName).toLowerCase();
   return n.includes('ширина') && n.match(/\d+/);
+}
+
+function isWindowSectionHeader(paramName) {
+  const n = String(paramName).toLowerCase().trim();
+  return n.includes('ширина') && n.includes('окна') && n.includes('кол');
 }
 
 function parseWindowRow(paramName, value) {
@@ -62,13 +69,32 @@ function findField(paramName) {
 export function parseImportRows(rows) {
   const result = {};
   const windowGroups = [];
+  let inWindowSection = false;
 
   for (const row of rows) {
     const paramName = row[0];
     const value = row[1];
     if (!paramName || String(paramName).trim() === '') continue;
 
-    // Окна
+    // Заголовок секции окон — «ширина простенка окна мм/кол-во»
+    if (isWindowSectionHeader(paramName)) {
+      inWindowSection = true;
+      continue;
+    }
+
+    // В секции окон: числовые строки (ширина → кол-во)
+    if (inWindowSection) {
+      const width = parseInt(paramName);
+      const count = parseInt(value) || 0;
+      if (!isNaN(width) && width > 0 && count > 0) {
+        windowGroups.push({ width_mm: width, count });
+      }
+      // Если строка не числовая — выходим из секции окон
+      if (isNaN(width)) inWindowSection = false;
+      else continue;
+    }
+
+    // Окна формата «Ширина 1700 мм» → кол-во
     if (isWindowRow(paramName)) {
       const wg = parseWindowRow(paramName, value);
       if (wg.width_mm > 0 && wg.count > 0) windowGroups.push(wg);
