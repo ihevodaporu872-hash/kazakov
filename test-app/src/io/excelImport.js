@@ -225,29 +225,46 @@ function findMultiField(paramName) {
   return null;
 }
 
+// Сканируем первые 5 строк — ищем строку «название» и строку «секция» с «Итог»
+function detectMultiBuildingRows(ws) {
+  let nameRow = -1, sectionRow = -1;
+  for (let r = 1; r <= 5; r++) {
+    const a = cellStr(ws.getRow(r).getCell(1).value).toLowerCase();
+    if (a.includes('название')) nameRow = r;
+    if (a.includes('секци')) {
+      let hasItog = false;
+      ws.getRow(r).eachCell({ includeEmpty: false }, (cell, col) => {
+        if (col > 1 && cellStr(cell.value).toLowerCase().includes('итог')) hasItog = true;
+      });
+      if (hasItog) sectionRow = r;
+    }
+  }
+  return (nameRow > 0 && sectionRow > 0) ? { nameRow, sectionRow } : null;
+}
+
 function isMultiBuildingFormat(ws) {
-  const a1 = cellStr(ws.getRow(1).getCell(1).value).toLowerCase();
-  const a2 = cellStr(ws.getRow(2).getCell(1).value).toLowerCase();
-  if (!a1 || !a2) return false;
-  return (a1.includes('название') || a1.includes('корпус')) && a2.includes('секци');
+  return detectMultiBuildingRows(ws) !== null;
 }
 
 function parseMultiBuildingSheet(ws) {
+  const detected = detectMultiBuildingRows(ws);
+  if (!detected) return null;
+  const { nameRow, sectionRow } = detected;
+
   const getVal = (r, c) => cellValue(ws.getRow(r).getCell(c).value);
   const getStr = (r, c) => cellStr(ws.getRow(r).getCell(c).value);
 
-  // Находим столбцы «Итог» — итерируем ячейки строки 2
+  // Находим столбцы «Итог» в строке секций
   const buildingCols = [];
-  const row2 = ws.getRow(2);
-  row2.eachCell({ includeEmpty: false }, (cell, colNum) => {
+  ws.getRow(sectionRow).eachCell({ includeEmpty: false }, (cell, colNum) => {
     if (colNum <= 1) return;
     const val = cellStr(cell.value).toLowerCase().trim();
     if (val.includes('итог')) {
-      // Имя корпуса из строки 1
-      let name = getStr(1, colNum);
+      // Имя корпуса из строки названий
+      let name = getStr(nameRow, colNum);
       if (!name) {
         for (let cc = colNum - 1; cc >= 2; cc--) {
-          const v = getStr(1, cc);
+          const v = getStr(nameRow, cc);
           if (v) { name = v; break; }
         }
       }
@@ -258,12 +275,12 @@ function parseMultiBuildingSheet(ws) {
 
   if (buildingCols.length === 0) return null;
 
-  // Сканируем параметры в столбце A — итерируем строки
+  // Сканируем параметры в столбце A — начинаем после строки секций
   const maxRow = ws.actualRowCount || ws.rowCount || 200;
   const paramRows = {};
   let windowSectionRow = -1;
 
-  for (let r = 3; r <= maxRow; r++) {
+  for (let r = sectionRow + 1; r <= maxRow; r++) {
     const raw = ws.getRow(r).getCell(1).value;
     const paramName = cellValue(raw);
     if (paramName == null) continue;
