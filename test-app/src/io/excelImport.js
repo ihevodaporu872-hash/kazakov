@@ -166,6 +166,23 @@ export function parseImportRows(rows) {
   return state;
 }
 
+// --- Хелпер для извлечения значения ячейки ---
+// ExcelJS может возвращать richText-объекты, формулы, гиперссылки
+function cellValue(val) {
+  if (val == null) return null;
+  if (typeof val === 'object') {
+    if (val.richText) return val.richText.map(r => r.text || '').join('');
+    if ('result' in val) return val.result; // формула
+    if (val.text != null) return val.text;  // гиперссылка
+  }
+  return val;
+}
+
+function cellStr(val) {
+  const v = cellValue(val);
+  return v != null ? String(v) : '';
+}
+
 // --- Многокорпусный формат ---
 // Строка 1: названия проектов/корпусов в столбцах
 // Строка 2: секции + «Итог» для каждого корпуса
@@ -199,7 +216,7 @@ const MULTI_PARAM_MAP = [
 ];
 
 function findMultiField(paramName) {
-  const n = String(paramName).toLowerCase().replace(/[^\wа-яё\s/\-]/gi, '').trim();
+  const n = cellStr(paramName).toLowerCase().replace(/[^\wа-яё\s/\-]/gi, '').trim();
   for (const mapping of MULTI_PARAM_MAP) {
     for (const key of mapping.keys) {
       if (n.includes(key)) return mapping;
@@ -209,34 +226,32 @@ function findMultiField(paramName) {
 }
 
 function isMultiBuildingFormat(ws) {
-  const row1A = ws.getRow(1).getCell(1).value;
-  const row2A = ws.getRow(2).getCell(1).value;
-  if (!row1A || !row2A) return false;
-  const a1 = String(row1A).toLowerCase();
-  const a2 = String(row2A).toLowerCase();
+  const a1 = cellStr(ws.getRow(1).getCell(1).value).toLowerCase();
+  const a2 = cellStr(ws.getRow(2).getCell(1).value).toLowerCase();
+  if (!a1 || !a2) return false;
   return (a1.includes('название') || a1.includes('корпус')) && a2.includes('секци');
 }
 
 function parseMultiBuildingSheet(ws) {
-  const getCellVal = (r, c) => ws.getRow(r).getCell(c).value;
+  const getVal = (r, c) => cellValue(ws.getRow(r).getCell(c).value);
+  const getStr = (r, c) => cellStr(ws.getRow(r).getCell(c).value);
 
   // Находим столбцы «Итог» — итерируем ячейки строки 2
   const buildingCols = [];
   const row2 = ws.getRow(2);
   row2.eachCell({ includeEmpty: false }, (cell, colNum) => {
     if (colNum <= 1) return;
-    const val = String(cell.value || '').toLowerCase().trim();
+    const val = cellStr(cell.value).toLowerCase().trim();
     if (val.includes('итог')) {
       // Имя корпуса из строки 1
-      let name = getCellVal(1, colNum);
+      let name = getStr(1, colNum);
       if (!name) {
-        // Ищем имя левее
         for (let cc = colNum - 1; cc >= 2; cc--) {
-          const v = getCellVal(1, cc);
+          const v = getStr(1, cc);
           if (v) { name = v; break; }
         }
       }
-      name = String(name || `Корпус ${buildingCols.length + 1}`).trim();
+      name = (name || `Корпус ${buildingCols.length + 1}`).trim();
       buildingCols.push({ col: colNum, name });
     }
   });
@@ -245,13 +260,14 @@ function parseMultiBuildingSheet(ws) {
 
   // Сканируем параметры в столбце A — итерируем строки
   const maxRow = ws.actualRowCount || ws.rowCount || 200;
-  const paramRows = {}; // field → rowNum
+  const paramRows = {};
   let windowSectionRow = -1;
 
   for (let r = 3; r <= maxRow; r++) {
-    const paramName = getCellVal(r, 1);
-    if (!paramName) continue;
-    const n = String(paramName).toLowerCase().trim();
+    const raw = ws.getRow(r).getCell(1).value;
+    const paramName = cellValue(raw);
+    if (paramName == null) continue;
+    const n = cellStr(raw).toLowerCase().trim();
 
     // Секция окон
     if (n.includes('ширина') && n.includes('окна') && n.includes('кол')) {
@@ -259,7 +275,7 @@ function parseMultiBuildingSheet(ws) {
       continue;
     }
 
-    const mapping = findMultiField(paramName);
+    const mapping = findMultiField(raw);
     if (mapping && !paramRows[mapping.field]) {
       paramRows[mapping.field] = { row: r, mapping };
     }
@@ -272,7 +288,7 @@ function parseMultiBuildingSheet(ws) {
 
     // Считываем параметры
     for (const [field, { row, mapping }] of Object.entries(paramRows)) {
-      const val = getCellVal(row, col);
+      const val = getVal(row, col);
       if (val != null) {
         bldg[field] = mapping.transform ? mapping.transform(val) : val;
       }
@@ -282,28 +298,24 @@ function parseMultiBuildingSheet(ws) {
     const windows = [];
     if (windowSectionRow > 0) {
       for (let r = windowSectionRow + 1; r <= maxRow; r++) {
-        const widthVal = getCellVal(r, 1);
-        const width = parseInt(widthVal);
+        const widthRaw = getVal(r, 1);
+        const width = parseInt(widthRaw);
         if (isNaN(width) || width <= 0) {
-          // Если это не число — конец секции окон (но пропускаем пустые строки)
-          if (widthVal != null && String(widthVal).trim() !== '') break;
+          if (widthRaw != null && String(widthRaw).trim() !== '') break;
           continue;
         }
-        const count = parseInt(getCellVal(r, col)) || 0;
+        const count = parseInt(getVal(r, col)) || 0;
         if (count > 0) {
           windows.push({ width_mm: width, count });
         }
       }
     }
     bldg.windows = windows;
-
-    // Считаем totalWindows
     bldg.totalWindows = bldg.windowCount || windows.reduce((s, w) => s + w.count, 0);
 
     buildings[name] = bldg;
   }
 
-  // Имя проекта — из первого корпуса (убираем «КОРПУС ...»)
   const firstName = buildingCols[0]?.name || '';
   const projectName = firstName.replace(/\s*корпус\s*[\d.+]+.*/i, '').trim() || firstName;
 
@@ -333,7 +345,7 @@ export async function importFromExcel(file) {
   ws.eachRow((row) => {
     const cells = [];
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      if (colNum <= 2) cells[colNum - 1] = cell.value;
+      if (colNum <= 2) cells[colNum - 1] = cellValue(cell.value);
     });
     if (cells.length > 0) rows.push([cells[0] != null ? cells[0] : '', cells[1] != null ? cells[1] : '']);
   });
