@@ -276,7 +276,7 @@ function parseMultiBuildingSheet(ws) {
   if (buildingCols.length === 0) return null;
 
   // Сканируем параметры в столбце A — начинаем после строки секций
-  const maxRow = ws.actualRowCount || ws.rowCount || 200;
+  const maxRow = Math.max(ws.rowCount || 0, ws.actualRowCount || 0, 200);
   const paramRows = {};
   let windowSectionRow = -1;
 
