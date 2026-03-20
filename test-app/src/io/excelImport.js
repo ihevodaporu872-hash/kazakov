@@ -98,26 +98,27 @@ export function parseImportRows(rows) {
   state.deltaT = calcDeltaT(schedule, 20);
   state.tInside = 20;
 
-  if (result.heatLoad_kW) {
+  if (result.heatLoad_kW != null) {
     state.heatLoad_W = result.heatLoad_kW * 1000;
   }
 
   // Здание
-  if (result.wallHeight_mm) state.wallHeight_mm = result.wallHeight_mm;
-  if (result.screedHeight_mm) state.screedHeight_mm = result.screedHeight_mm;
-  if (result.floorHeight_mm) state.floorHeight_mm = result.floorHeight_mm;
-  if (result.insulationThickness_mm) state.insulationThickness_mm = result.insulationThickness_mm;
-  if (result.apartments) state.apartments = result.apartments;
-  if (result.apartmentsPerFloor) state.apartmentsPerFloor = result.apartmentsPerFloor;
-  if (result.corridorLength_m) state.corridorLength_m = result.corridorLength_m;
-  if (result.roomsPerApartment) state.roomsPerApartment = result.roomsPerApartment;
+  if (result.wallHeight_mm != null) state.wallHeight_mm = result.wallHeight_mm;
+  if (result.screedHeight_mm != null) state.screedHeight_mm = result.screedHeight_mm;
+  if (result.floorHeight_mm != null) state.floorHeight_mm = result.floorHeight_mm;
+  if (result.insulationThickness_mm != null) state.insulationThickness_mm = result.insulationThickness_mm;
+  if (result.floors != null) state.floors = result.floors;
+  if (result.apartments != null) state.apartments = result.apartments;
+  if (result.apartmentsPerFloor != null) state.apartmentsPerFloor = result.apartmentsPerFloor;
+  if (result.corridorLength_m != null) state.corridorLength_m = result.corridorLength_m;
+  if (result.roomsPerApartment != null) state.roomsPerApartment = result.roomsPerApartment;
 
   // Трубопроводы
-  if (result.riserPairs) state.riserPairs = result.riserPairs;
-  if (result.manifoldOutputs) state.manifoldOutputs = result.manifoldOutputs;
-  if (result.heatingZones) state.heatingZones = result.heatingZones;
-  if (result.zoneBoundaries) state.zoneBoundaries = result.zoneBoundaries;
-  if (result.pexRoutingType) state.pexRoutingType = result.pexRoutingType;
+  if (result.riserPairs != null) state.riserPairs = result.riserPairs;
+  if (result.manifoldOutputs != null) state.manifoldOutputs = result.manifoldOutputs;
+  if (result.heatingZones != null) state.heatingZones = result.heatingZones;
+  if (result.zoneBoundaries != null) state.zoneBoundaries = result.zoneBoundaries;
+  if (result.pexRoutingType != null) state.pexRoutingType = result.pexRoutingType;
 
   // Окна
   if (windowGroups.length > 0) {

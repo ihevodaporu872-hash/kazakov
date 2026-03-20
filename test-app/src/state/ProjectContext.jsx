@@ -9,6 +9,7 @@ const initialState = {
   distribution: '',
   insulationThickness_mm: 13,
   floorHeight_mm: 3000,
+  floors: null,            // "2-17" — диапазон этажей (из импорта)
   riserPairs: 0,
   manifoldOutputs: 0,
   heatingZones: 0,

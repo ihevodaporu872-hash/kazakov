@@ -103,15 +103,15 @@ export default function Step1_InitialData() {
 
   // Применить импортированные данные к локальным полям и state
   const applyImported = (imported) => {
-    if (imported.windowCount) setCount(imported.windowCount);
-    if (imported.heatLoad_W) { setLoad(imported.heatLoad_W / 1000); setUnit('kw'); }
-    if (imported.wallHeight_mm) setWh(imported.wallHeight_mm);
-    if (imported.screedHeight_mm) setSh(imported.screedHeight_mm);
+    if (imported.windowCount != null) setCount(imported.windowCount);
+    if (imported.heatLoad_W != null) { setLoad(imported.heatLoad_W / 1000); setUnit('kw'); }
+    if (imported.wallHeight_mm != null) setWh(imported.wallHeight_mm);
+    if (imported.screedHeight_mm != null) setSh(imported.screedHeight_mm);
     if (imported.schedule) setSchedule(imported.schedule);
-    if (imported.corridorLength_m) setCorridorLen(imported.corridorLength_m);
+    if (imported.corridorLength_m != null) setCorridorLen(imported.corridorLength_m);
     if (imported.pexRoutingType) setRoutingType(imported.pexRoutingType);
-    if (imported.roomsPerApartment) setRoomsPerApt(imported.roomsPerApartment);
-    if (imported.apartmentsPerFloor) setAptsPerFloor(imported.apartmentsPerFloor);
+    if (imported.roomsPerApartment != null) setRoomsPerApt(imported.roomsPerApartment);
+    if (imported.apartmentsPerFloor != null) setAptsPerFloor(imported.apartmentsPerFloor);
     if (imported.zoneBoundaries) setZoneBounds(imported.zoneBoundaries.join(', '));
     setProjectLoaded(true);
     dispatch({ type: 'SET', payload: imported });

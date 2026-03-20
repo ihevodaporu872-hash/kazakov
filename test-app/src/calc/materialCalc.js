@@ -6,24 +6,31 @@
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
 function getNumFloors(state) {
+  // Берём floors из проекта или из импортированного state
+  let floors = null;
   if (state.projectData && state.selectedBuilding) {
     const bldg = state.projectData.buildings[state.selectedBuilding];
-    if (bldg && bldg.floors) {
-      const m = bldg.floors.match(/(\d+)-(\d+)/);
-      if (m) return parseInt(m[2]) - parseInt(m[1]) + 1;
-    }
+    if (bldg) floors = bldg.floors;
+  }
+  if (!floors && state.floors) floors = state.floors;
+  if (floors) {
+    const m = String(floors).match(/(\d+)-(\d+)/);
+    if (m) return parseInt(m[2]) - parseInt(m[1]) + 1;
   }
   return 16;
 }
 
 // Получить верхний этаж здания (абсолютный номер)
 function getTopFloor(state) {
+  let floors = null;
   if (state.projectData && state.selectedBuilding) {
     const bldg = state.projectData.buildings[state.selectedBuilding];
-    if (bldg && bldg.floors) {
-      const m = bldg.floors.match(/(\d+)-(\d+)/);
-      if (m) return parseInt(m[2]);
-    }
+    if (bldg) floors = bldg.floors;
+  }
+  if (!floors && state.floors) floors = state.floors;
+  if (floors) {
+    const m = String(floors).match(/(\d+)-(\d+)/);
+    if (m) return parseInt(m[2]);
   }
   return getNumFloors(state);
 }
