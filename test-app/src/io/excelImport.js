@@ -166,17 +166,168 @@ export function parseImportRows(rows) {
   return state;
 }
 
+// --- Многокорпусный формат ---
+// Строка 1: названия проектов/корпусов в столбцах
+// Строка 2: секции + «Итог» для каждого корпуса
+// Строки 3+: параметры в столбце A, значения в столбцах корпусов
+// Окна: секция «ширина простенка окна мм/кол-во», ширина в столбце A, кол-во в столбце корпуса
+
+const MULTI_PARAM_MAP = [
+  { keys: ['расход тепла'], field: 'heatLoad_kW', transform: v => parseFloat(v) || 0 },
+  { keys: ['кол во окон', 'кол-во окон', 'количество окон'], field: 'windowCount', transform: v => parseInt(v) || 0 },
+  { keys: ['высота стяжки'], field: 'screedHeight_mm', transform: v => parseInt(v) || 100 },
+  { keys: ['высота этажа'], field: 'floorHeight_mm', transform: v => parseInt(v) || 3000 },
+  { keys: ['толщина изоляции'], field: 'insulationThickness_mm', transform: v => parseInt(v) || 13 },
+  { keys: ['этажей корпуса', 'кол во этажей', 'кол-во этажей'], field: 'floors', transform: v => parseInt(v) || 0 },
+  { keys: ['количество квартир'], field: 'apartments', transform: v => parseInt(v) || 0 },
+  { keys: ['зон отопления', 'зоны отопления'], field: 'heatingZones', transform: v => parseInt(v) || 1 },
+  { keys: ['границы зон'], field: 'zoneBoundaries', transform: v => {
+    if (v == null || String(v).trim() === '') return [];
+    return String(v).split(/[,;\s]+/).map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+  }},
+  { keys: ['тип разводки'], field: 'pexRoutingType', transform: v => {
+    const s = String(v).toLowerCase();
+    return s.includes('попутн') || s.includes('тройник') ? 'series' : 'radial';
+  }},
+  { keys: ['температурный график'], field: 'schedule', transform: v => String(v).replace(/[°CС\s]/g, '') },
+  { keys: ['высота простенка'], field: 'wallHeight_mm', transform: v => parseInt(v) || 0 },
+  { keys: ['длина коридора'], field: 'corridorLength_m', transform: v => parseFloat(v) || 0 },
+  { keys: ['комнат на квартиру', 'комнат/квартиру'], field: 'roomsPerApartment', transform: v => parseInt(v) || 2 },
+  { keys: ['квартир на этаже', 'этажи/кол во квартир', 'этажи/кол-во квартир'], field: 'apartmentsPerFloor', transform: v => parseInt(v) || 0 },
+  { keys: ['пар стояков'], field: 'riserPairs', transform: v => parseInt(v) || 0 },
+  { keys: ['выходов гребёнок', 'выходов гребенок', 'гребёнок', 'гребенок'], field: 'manifoldOutputs', transform: v => parseInt(v) || 0 },
+];
+
+function findMultiField(paramName) {
+  const n = String(paramName).toLowerCase().replace(/[^\wа-яё\s/\-]/gi, '').trim();
+  for (const mapping of MULTI_PARAM_MAP) {
+    for (const key of mapping.keys) {
+      if (n.includes(key)) return mapping;
+    }
+  }
+  return null;
+}
+
+function isMultiBuildingFormat(ws) {
+  const row1A = ws.getRow(1).getCell(1).value;
+  const row2A = ws.getRow(2).getCell(1).value;
+  if (!row1A || !row2A) return false;
+  const a1 = String(row1A).toLowerCase();
+  const a2 = String(row2A).toLowerCase();
+  return (a1.includes('название') || a1.includes('корпус')) && a2.includes('секци');
+}
+
+function parseMultiBuildingSheet(ws) {
+  const getCellVal = (r, c) => ws.getRow(r).getCell(c).value;
+
+  // Находим столбцы «Итог»
+  const maxCol = ws.columnCount || 20;
+  const buildingCols = [];
+  for (let c = 2; c <= maxCol; c++) {
+    const val = String(getCellVal(2, c) || '').toLowerCase().trim();
+    if (val.includes('итог')) {
+      // Имя корпуса из строки 1
+      let name = getCellVal(1, c);
+      if (!name) {
+        // Ищем имя левее
+        for (let cc = c - 1; cc >= 2; cc--) {
+          const v = getCellVal(1, cc);
+          if (v) { name = v; break; }
+        }
+      }
+      name = String(name || `Корпус ${buildingCols.length + 1}`).trim();
+      buildingCols.push({ col: c, name });
+    }
+  }
+
+  if (buildingCols.length === 0) return null;
+
+  // Сканируем параметры в столбце A
+  const maxRow = ws.rowCount || 200;
+  const paramRows = {}; // field → rowNum
+  let windowSectionRow = -1;
+
+  for (let r = 3; r <= maxRow; r++) {
+    const paramName = getCellVal(r, 1);
+    if (!paramName) continue;
+    const n = String(paramName).toLowerCase().trim();
+
+    // Секция окон
+    if (n.includes('ширина') && n.includes('окна') && n.includes('кол')) {
+      windowSectionRow = r;
+      continue;
+    }
+
+    const mapping = findMultiField(paramName);
+    if (mapping && !paramRows[mapping.field]) {
+      paramRows[mapping.field] = { row: r, mapping };
+    }
+  }
+
+  // Извлекаем данные для каждого корпуса
+  const buildings = {};
+  for (const { col, name } of buildingCols) {
+    const bldg = { name };
+
+    // Считываем параметры
+    for (const [field, { row, mapping }] of Object.entries(paramRows)) {
+      const val = getCellVal(row, col);
+      if (val != null) {
+        bldg[field] = mapping.transform ? mapping.transform(val) : val;
+      }
+    }
+
+    // Окна: ширина в столбце A, кол-во в столбце корпуса
+    const windows = [];
+    if (windowSectionRow > 0) {
+      for (let r = windowSectionRow + 1; r <= maxRow; r++) {
+        const widthVal = getCellVal(r, 1);
+        const width = parseInt(widthVal);
+        if (isNaN(width) || width <= 0) {
+          // Если это не число — конец секции окон (но пропускаем пустые строки)
+          if (widthVal != null && String(widthVal).trim() !== '') break;
+          continue;
+        }
+        const count = parseInt(getCellVal(r, col)) || 0;
+        if (count > 0) {
+          windows.push({ width_mm: width, count });
+        }
+      }
+    }
+    bldg.windows = windows;
+
+    // Считаем totalWindows
+    bldg.totalWindows = bldg.windowCount || windows.reduce((s, w) => s + w.count, 0);
+
+    buildings[name] = bldg;
+  }
+
+  // Имя проекта — из первого корпуса (убираем «КОРПУС ...»)
+  const firstName = buildingCols[0]?.name || '';
+  const projectName = firstName.replace(/\s*корпус\s*[\d.+]+.*/i, '').trim() || firstName;
+
+  return { isMultiBuilding: true, projectName, buildings };
+}
+
 /**
  * Импорт из Excel-файла (.xlsx)
+ * Автоматически определяет формат: многокорпусный или двухколоночный
  */
 export async function importFromExcel(file) {
   const wb = new ExcelJS.Workbook();
   const buffer = await file.arrayBuffer();
   await wb.xlsx.load(buffer);
 
-  const ws = wb.worksheets[0]; // Берём первый лист
+  const ws = wb.worksheets[0];
   if (!ws) throw new Error('Файл не содержит листов');
 
+  // Определяем формат
+  if (isMultiBuildingFormat(ws)) {
+    const result = parseMultiBuildingSheet(ws);
+    if (result) return result;
+  }
+
+  // Двухколоночный формат (параметр → значение)
   const rows = [];
   ws.eachRow((row) => {
     const cells = [];
